@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent RL Rollout Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 32px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .header h1 {
+            color: #1d1d1f;
+            margin-bottom: 24px;
+            font-size: 36px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: -0.2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(247, 247, 247, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #6e6e73;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-item strong {
+            color: #1d1d1f;
+            margin-right: 6px;
+            font-weight: 600;
+        }
+
+        /* 三栏布局 */
+        .main-content {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            height: calc(100vh - 300px);
+        }
+
+        /* 左侧问句列表 */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            font-weight: 600;
+            font-size: 17px;
+            color: #1d1d1f;
+            flex-shrink: 0;
+            letter-spacing: -0.3px;
+        }
+
+        .question-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .question-item {
+            padding: 18px 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .question-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .question-item.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            border-left: 3px solid #667eea;
+        }
+
+        .question-text {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            color: #1d1d1f;
+            font-weight: 500;
+        }
+
+        .question-meta {
+            display: flex;
+            gap: 8px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .question-item.active .question-meta {
+            opacity: 0.85;
+        }
+
+        .question-badge {
+            background: rgba(120, 120, 128, 0.12);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #6e6e73;
+            font-weight: 500;
+        }
+
+        .question-item.active .question-badge {
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+        }
+
+        /* 中间rollout列表 */
+        .rollout-panel {
+            width: 420px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .rollout-panel-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+        }
+
+        .rollout-panel-title {
+            font-weight: 600;
+            font-size: 17px;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+            letter-spacing: -0.3px;
+        }
+
+        .rollout-panel-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: #6e6e73;
+            flex-wrap: wrap;
+        }
+
+        .rollout-panel-meta span {
+            background: rgba(120, 120, 128, 0.12);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .rollout-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .rollout-item {
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+        }
+
+        .rollout-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .rollout-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .rollout-info {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .score-badge {
+            font-size: 19px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 12px;
+            color: white;
+            min-width: 75px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .score-high {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .score-medium {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .score-low {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .score-negative {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        .rollout-meta {
+            font-size: 13px;
+            color: #6e6e73;
+            flex: 1;
+        }
+
+        .rollout-meta div {
+            margin: 4px 0;
+        }
+
+        /* 右侧详情面板 */
+        .detail-panel {
+            flex: 1;
+            min-width: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detail-panel-header {
+            padding: 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+        }
+
+        .detail-panel-title {
+            font-weight: 600;
+            font-size: 17px;
+            color: #1d1d1f;
+            letter-spacing: -0.3px;
+        }
+
+        .detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .detail-empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: #86868b;
+        }
+
+        .detail-empty-icon {
+            font-size: 56px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .messages-container {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .message {
+            border-radius: 16px;
+            border: 1.5px solid rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .message:hover {
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .message-system {
+            background: rgba(247, 247, 247, 0.8);
+            border-left: 3px solid #86868b;
+        }
+
+        .message-user {
+            background: rgba(227, 242, 253, 0.6);
+            border-left: 3px solid #2196F3;
+        }
+
+        .message-assistant {
+            background: rgba(243, 229, 245, 0.6);
+            border-left: 3px solid #9c27b0;
+        }
+
+        .message-tool {
+            background: rgba(255, 243, 224, 0.6);
+            border-left: 3px solid #ff9800;
+        }
+
+        .message-header {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            color: #86868b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.5px;
+        }
+
+        .message-header:hover {
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .message-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-index {
+            background: rgba(120, 120, 128, 0.16);
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .collapse-icon {
+            font-size: 10px;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.6;
+        }
+
+        .message.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .message-content {
+            font-size: 14px;
+            line-height: 1.7;
+            word-wrap: break-word;
+            padding: 18px;
+            color: #1d1d1f;
+            max-height: none;
+            overflow: visible;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .message.collapsed .message-content {
+            max-height: 0;
+            padding: 0 18px;
+            overflow: hidden;
+        }
+
+        .message-content pre {
+            white-space: pre-wrap;
+            background: rgba(0, 0, 0, 0.03);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        }
+
+        /* Markdown样式 - 苹果风格 */
+        .markdown-content {
+            line-height: 1.7;
+            color: #1d1d1f;
+        }
+
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #1d1d1f;
+        }
+
+        .markdown-content h1 {
+            font-size: 28px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            padding-bottom: 10px;
+        }
+
+        .markdown-content h2 {
+            font-size: 22px;
+        }
+
+        .markdown-content h3 {
+            font-size: 18px;
+        }
+
+        .markdown-content p {
+            margin: 12px 0;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin: 12px 0;
+            padding-left: 28px;
+        }
+
+        .markdown-content li {
+            margin: 6px 0;
+        }
+
+        .markdown-content code {
+            background: rgba(120, 120, 128, 0.12);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            color: #1d1d1f;
+        }
+
+        .markdown-content pre {
+            background: #1d1d1f;
+            color: #f5f5f7;
+            padding: 18px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: #f5f5f7;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .markdown-content blockquote {
+            border-left: 3px solid rgba(0, 0, 0, 0.12);
+            padding-left: 18px;
+            margin: 16px 0;
+            color: #6e6e73;
+            font-style: italic;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .markdown-content th, .markdown-content td {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 10px 14px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: rgba(247, 247, 247, 0.9);
+            font-weight: 600;
+        }
+
+        .markdown-content a {
+            color: #0071e3;
+            text-decoration: none;
+        }
+
+        .markdown-content a:hover {
+            text-decoration: underline;
+        }
+
+        .think-section {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.08) 0%, rgba(255, 152, 0, 0.08) 100%);
+            border-left: 3px solid #ff9800;
+            padding: 18px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .think-title {
+            font-weight: 600;
+            color: #f57c00;
+            margin-bottom: 10px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metadata-section {
+            margin-top: 20px;
+            padding: 18px;
+            background: rgba(247, 247, 247, 0.6);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .metadata-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1d1d1f;
+            font-size: 15px;
+            letter-spacing: -0.2px;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .metadata-item {
+            color: #6e6e73;
+        }
+
+        .metadata-item strong {
+            color: #1d1d1f;
+            font-weight: 600;
+        }
+
+        .reward-info {
+            margin-top: 18px;
+            padding: 18px;
+            background: linear-gradient(135deg, rgba(255, 235, 59, 0.12) 0%, rgba(255, 193, 7, 0.12) 100%);
+            border-left: 3px solid #ffc107;
+            border-radius: 16px;
+        }
+
+        .reward-info-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #1d1d1f;
+            font-size: 15px;
+            letter-spacing: -0.2px;
+        }
+
+        .reward-detail {
+            font-size: 13px;
+            color: #6e6e73;
+            margin: 5px 0;
+        }
+
+        .empty-state {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 80px 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .empty-state-icon {
+            font-size: 72px;
+            margin-bottom: 24px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 20px;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .empty-state-subtext {
+            font-size: 15px;
+            color: #86868b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(0, 0, 0, 0.06);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 滚动条美化 - 苹果风格 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(120, 120, 128, 0.3);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(120, 120, 128, 0.5);
+            background-clip: padding-box;
+        }
+
+        @media (max-width: 1400px) {
+            .main-content {
+                flex-wrap: wrap;
+                height: auto;
+            }
+
+            .sidebar, .rollout-panel, .detail-panel {
+                width: 100%;
+                max-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent RL Rollout Viewer</h1>
+            <div class="controls">
+            </div>
+            <div class="stats" id="stats"></div>
+        </div>
+
+        <div id="content">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-text">请选择包含rollout JSON文件的文件夹</div>
+                <div class="empty-state-subtext">支持批量加载和分析多个rollout样本</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let clusteredData = [];
+        let currentClusterIndex = 0;
+        let currentRolloutIndex = -1;
+
+        // 文件选择处理
+        
+
+        async function handleFiles(e) {
+            const files = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+
+            if (files.length === 0) {
+                alert('未找到JSON文件！');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const rollouts = [];
+
+                for (const file of files) {
+                    const content = await file.text();
+                    const data = JSON.parse(content);
+                    rollouts.push(data);
+                }
+
+                clusterData(rollouts);
+                renderLayout();
+            } catch (error) {
+                console.error('Error processing files:', error);
+                alert('处理文件时出错: ' + error.message);
+            }
+        }
+
+        // 提取问句的函数
+        function extractQuestion(content) {
+            // 优先检查 <NLU(仅供参考)>
+            const nluMatch = content.match(/^(.*?)<NLU\(仅供参考\)>/s);
+            if (nluMatch) {
+                return nluMatch[1].trim();
+            }
+
+            // 其次检查 <当前系统时间>
+            const timeMatch = content.match(/^(.*?)<当前系统时间>/s);
+            if (timeMatch) {
+                return timeMatch[1].trim();
+            }
+
+            // 如果都没有，返回第一行或前200个字符
+            const firstLine = content.split('\n')[0].trim();
+            return firstLine.substring(0, 200);
+        }
+
+        function clusterData(rollouts) {
+            const clusters = {};
+
+            rollouts.forEach(rollout => {
+                // 找到最后一个user role的content
+                const messages = rollout.messages || [];
+                let lastUserContent = '';
+                let extractedQuestion = '';
+
+                for (let i = messages.length - 1; i >= 0; i--) {
+                    if (messages[i].role === 'user') {
+                        lastUserContent = messages[i].content;
+                        extractedQuestion = extractQuestion(lastUserContent);
+                        break;
+                    }
+                }
+
+                if (!extractedQuestion) {
+                    extractedQuestion = '未找到user内容';
+                }
+
+                if (!clusters[extractedQuestion]) {
+                    clusters[extractedQuestion] = [];
+                }
+
+                clusters[extractedQuestion].push(rollout);
+            });
+
+            // 转换为数组并对每个cluster内的rollout按score降序排列
+            clusteredData = Object.entries(clusters).map(([content, rollouts]) => {
+                const sortedRollouts = rollouts.sort((a, b) => {
+                    const scoreA = a.reward?.score ?? -Infinity;
+                    const scoreB = b.reward?.score ?? -Infinity;
+                    return scoreB - scoreA;
+                });
+
+                const avgScore = sortedRollouts.reduce((sum, r) => sum + (r.reward?.score ?? 0), 0) / sortedRollouts.length;
+
+                return {
+                    content,
+                    rollouts: sortedRollouts,
+                    count: sortedRollouts.length,
+                    avgScore
+                };
+            });
+
+            // 按cluster的平均score降序排列
+            clusteredData.sort((a, b) => b.avgScore - a.avgScore);
+        }
+
+        function renderLayout() {
+            const contentDiv = document.getElementById('content');
+
+            // 更新统计信息
+            const totalRollouts = clusteredData.reduce((sum, c) => sum + c.count, 0);
+            const totalClusters = clusteredData.length;
+            const avgScore = (clusteredData.reduce((sum, c) => sum + c.avgScore * c.count, 0) / totalRollouts).toFixed(3);
+
+            document.getElementById('stats').innerHTML = `
+                <div class="stat-item"><strong>总样本数:</strong> ${totalRollouts}</div>
+                <div class="stat-item"><strong>聚类数:</strong> ${totalClusters}</div>
+                <div class="stat-item"><strong>平均分数:</strong> ${avgScore}</div>
+            `;
+
+            // 渲染三栏布局
+            contentDiv.innerHTML = `
+                <div class="main-content">
+                    <div class="sidebar">
+                        <div class="sidebar-header">📋 问句列表 (${totalClusters})</div>
+                        <div class="question-list">
+                            ${clusteredData.map((cluster, idx) => `
+                                <div class="question-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
+                                    <div class="question-text">${escapeHtml(cluster.content)}</div>
+                                    <div class="question-meta">
+                                        <span class="question-badge">样本: ${cluster.count}</span>
+                                        <span class="question-badge">平均: ${cluster.avgScore.toFixed(3)}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="rollout-panel" id="rolloutPanel">
+                        ${renderRolloutList(0)}
+                    </div>
+                    <div class="detail-panel" id="detailPanel">
+                        <div class="detail-panel-header">
+                            <div class="detail-panel-title">📝 Rollout详情</div>
+                        </div>
+                        <div class="detail-content">
+                            <div class="detail-empty">
+                                <div class="detail-empty-icon">👈</div>
+                                <div>点击左侧rollout查看详细轨迹</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectQuestion(index) {
+            currentClusterIndex = index;
+            currentRolloutIndex = -1;
+
+            // 更新左侧列表选中状态
+            document.querySelectorAll('.question-item').forEach((item, idx) => {
+                if (idx === index) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // 更新中间rollout列表
+            document.getElementById('rolloutPanel').innerHTML = renderRolloutList(index);
+
+            // 清空右侧详情
+            document.querySelector('.detail-content').innerHTML = `
+                <div class="detail-empty">
+                    <div class="detail-empty-icon">👈</div>
+                    <div>点击左侧rollout查看详细轨迹</div>
+                </div>
+            `;
+        }
+
+        function renderRolloutList(clusterIdx) {
+            const cluster = clusteredData[clusterIdx];
+
+            return `
+                <div class="rollout-panel-header">
+                    <div class="rollout-panel-title">🎯 Rollout列表</div>
+                    <div class="rollout-panel-meta">
+                        <span>共 ${cluster.count} 个样本</span>
+                        <span>最高: ${cluster.rollouts[0].reward?.score?.toFixed(3) ?? 'N/A'}</span>
+                        <span>最低: ${cluster.rollouts[cluster.count - 1].reward?.score?.toFixed(3) ?? 'N/A'}</span>
+                    </div>
+                </div>
+                <div class="rollout-list">
+                    ${cluster.rollouts.map((rollout, rolloutIdx) => renderRolloutItem(rollout, clusterIdx, rolloutIdx)).join('')}
+                </div>
+            `;
+        }
+
+        function renderRolloutItem(rollout, clusterIdx, rolloutIdx) {
+            const score = rollout.reward?.score ?? 0;
+            const scoreClass = score > 0.5 ? 'score-high' :
+                             score > 0 ? 'score-medium' :
+                             score === 0 ? 'score-low' : 'score-negative';
+
+            return `
+                <div class="rollout-item" onclick="selectRollout(${clusterIdx}, ${rolloutIdx})">
+                    <div class="rollout-info">
+                        <div class="score-badge ${scoreClass}">${score.toFixed(3)}</div>
+                        <div class="rollout-meta">
+                            <div><strong>ID:</strong> ${rollout.request_id?.substring(0, 8) || 'N/A'}</div>
+                            <div><strong>时间:</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'}</div>
+                            <div><strong>运行:</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectRollout(clusterIdx, rolloutIdx) {
+            currentRolloutIndex = rolloutIdx;
+
+            // 更新中间列表选中状态
+            document.querySelectorAll('.rollout-item').forEach((item, idx) => {
+                if (idx === rolloutIdx) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+
+            // 更新右侧详情
+            const rollout = clusteredData[clusterIdx].rollouts[rolloutIdx];
+            document.querySelector('.detail-content').innerHTML = renderRolloutDetail(rollout);
+
+            // 绑定折叠事件
+            bindCollapseEvents();
+        }
+
+        function bindCollapseEvents() {
+            document.querySelectorAll('.message-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const message = this.parentElement;
+                    message.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        function renderRolloutDetail(rollout) {
+            return `
+                ${renderMessages(rollout.messages)}
+                ${renderRewardInfo(rollout.reward)}
+                ${renderMetadata(rollout)}
+            `;
+        }
+
+        function renderMessages(messages) {
+            if (!messages || messages.length === 0) return '<p>无消息数据</p>';
+
+            // 找到最后一个assistant的索引
+            let lastAssistantIndex = -1;
+            for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i].role === 'assistant') {
+                    lastAssistantIndex = i;
+                    break;
+                }
+            }
+
+            return `
+                <div class="messages-container">
+                    ${messages.map((msg, idx) => {
+                        const roleClass = `message-${msg.role}`;
+                        let content = msg.content;
+
+                        // 处理tool content (可能是数组)
+                        if (Array.isArray(content)) {
+                            content = content.map(c => c.text || JSON.stringify(c)).join('\n');
+                        }
+
+                        // 截断过长的system消息
+                        if (msg.role === 'system' && content.length > 500) {
+                            content = content.substring(0, 500) + '... (已截断)';
+                        }
+
+                        // 除了最后一个assistant，其他所有消息默认折叠
+                        const shouldCollapse = idx !== lastAssistantIndex;
+
+                        // 判断是否是最后一个assistant（需要特殊渲染）
+                        const isLastAssistant = idx === lastAssistantIndex && msg.role === 'assistant';
+
+                        return `
+                            <div class="message ${roleClass} ${shouldCollapse ? 'collapsed' : ''}">
+                                <div class="message-header">
+                                    <div class="message-header-left">
+                                        <span>${msg.role} ${msg.generation_time ? `(生成: ${msg.generation_time.toFixed(2)}s)` : ''}</span>
+                                        <span class="message-index">#${idx + 1}</span>
+                                    </div>
+                                    <span class="collapse-icon">▼</span>
+                                </div>
+                                <div class="message-content">
+                                    ${isLastAssistant ? renderAssistantContent(content) : `<pre>${escapeHtml(content)}</pre>`}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderAssistantContent(content) {
+            // 检查是否包含</think>
+            if (content.includes('</think>')) {
+                const parts = content.split('</think>');
+                const thinkContent = parts[0].replace(/<think>/g, '').trim();
+                const answerContent = parts.slice(1).join('</think>').trim();
+
+                return `
+                    ${thinkContent ? `
+                        <div class="think-section">
+                            <div class="think-title">💭 思维链</div>
+                            <div class="markdown-content">${simpleMarkdown(thinkContent)}</div>
+                        </div>
+                    ` : ''}
+                    ${answerContent ? `
+                        <div class="markdown-content">${simpleMarkdown(answerContent)}</div>
+                    ` : ''}
+                `;
+            } else {
+                // 没有</think>标签，直接渲染markdown
+                return `<div class="markdown-content">${simpleMarkdown(content)}</div>`;
+            }
+        }
+
+        // 简单的markdown渲染器
+        function simpleMarkdown(text) {
+            let html = escapeHtml(text);
+
+            // 代码块（```）
+            html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+            // 行内代码
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // 粗体
+            html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+
+            // 标题
+            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            // 无序列表
+            html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+            // 段落
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+
+            // 清理空段落
+            html = html.replace(/<p><\/p>/g, '');
+            html = html.replace(/<p>\s*<(h[1-3]|ul|pre)/g, '<$1');
+            html = html.replace(/<\/(h[1-3]|ul|pre)>\s*<\/p>/g, '</$1>');
+
+            return html;
+        }
+
+        function renderRewardInfo(reward) {
+            if (!reward || !reward.reward_info) return '';
+
+            const info = reward.reward_info;
+            const ruleRewards = info.rule_reward_info || {};
+
+            return `
+                <div class="reward-info">
+                    <div class="reward-info-title">📊 Reward详情</div>
+                    <div class="reward-detail"><strong>最终分数:</strong> ${info.final_reward?.toFixed(3) || 'N/A'}</div>
+                    <div class="reward-detail"><strong>LLM Reward:</strong> ${info.llm_reward?.toFixed(3) || 'N/A'}</div>
+                    <div class="reward-detail"><strong>Reward响应:</strong> ${info.reward_response || 'N/A'}</div>
+                    ${Object.keys(ruleRewards).length > 0 ? `
+                        <div style="margin-top: 10px;">
+                            <strong>规则奖励:</strong>
+                            ${Object.entries(ruleRewards).map(([rule, data]) => `
+                                <div class="reward-detail" style="margin-left: 15px;">
+                                    - ${rule}: ${Array.isArray(data) ? `${data[0]} (${data[1]})` : data}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderMetadata(rollout) {
+            return `
+                <div class="metadata-section">
+                    <div class="metadata-title">ℹ️ 元数据</div>
+                    <div class="metadata-grid">
+                        <div class="metadata-item"><strong>Request ID:</strong> ${rollout.request_id || 'N/A'}</div>
+                        <div class="metadata-item"><strong>时间戳:</strong> ${rollout.timestamp || 'N/A'}</div>
+                        <div class="metadata-item"><strong>数据源:</strong> ${rollout.data_source || 'N/A'}</div>
+                        <div class="metadata-item"><strong>问题:</strong> ${rollout.question || 'N/A'}</div>
+                        <div class="metadata-item"><strong>完成原因:</strong> ${rollout.finish_reason || 'N/A'}</div>
+                        <div class="metadata-item"><strong>运行时间:</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                        ${rollout.tool_usage_counts ? `
+                            <div class="metadata-item"><strong>工具使用:</strong> ${JSON.stringify(rollout.tool_usage_counts)}</div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function showLoading() {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div style="color: #1d1d1f; font-weight: 500;">正在加载和分析数据...</div>
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

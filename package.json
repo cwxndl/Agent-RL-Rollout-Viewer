@@ -1,0 +1,114 @@
+{
+  "name": "agent-rl-rollout-viewer",
+  "displayName": "Agent RL Rollout Viewer",
+  "description": "可视化查看Agent RL训练的rollout轨迹数据，支持多step文件夹浏览和分析",
+  "version": "0.1.0",
+  "publisher": "niudonglei",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "agent",
+    "reinforcement learning",
+    "rollout",
+    "trajectory",
+    "viewer",
+    "rl",
+    "training"
+  ],
+  "icon": "media/icon.png",
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onView:agentRLExplorer"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agent-rl-viewer",
+          "title": "Agent RL Viewer",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "agent-rl-viewer": [
+        {
+          "id": "agentRLExplorer",
+          "name": "Rollout Explorer"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "agentRL.setRolloutFolder",
+        "title": "Set Rollout Folder",
+        "category": "Agent RL"
+      },
+      {
+        "command": "agentRL.openViewer",
+        "title": "Open Rollout Viewer",
+        "category": "Agent RL",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "agentRL.openStep",
+        "title": "Open Step Viewer",
+        "category": "Agent RL"
+      },
+      {
+        "command": "agentRL.refresh",
+        "title": "Refresh",
+        "category": "Agent RL",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "agentRL.openViewer",
+          "when": "view == agentRLExplorer",
+          "group": "navigation@1"
+        },
+        {
+          "command": "agentRL.refresh",
+          "when": "view == agentRLExplorer",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "agentRL.openStep",
+          "when": "view == agentRLExplorer && viewItem == stepFolder",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Agent RL Viewer",
+      "properties": {
+        "agentRL.rolloutFolder": {
+          "type": "string",
+          "default": "",
+          "description": "默认的rollout根目录路径"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/vscode": "^1.84.0",
+    "typescript": "^5.6.3",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

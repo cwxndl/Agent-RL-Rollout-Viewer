@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent RL Rollout Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 24px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 32px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .header h1 {
+            color: #1d1d1f;
+            margin-bottom: 24px;
+            font-size: 36px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .step-selector {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .step-selector select {
+            padding: 12px 20px;
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 500;
+            background: white;
+            color: #1d1d1f;
+            cursor: pointer;
+            min-width: 200px;
+            transition: all 0.2s;
+        }
+
+        .step-selector select:hover {
+            border-color: #667eea;
+        }
+
+        .step-selector select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .step-info {
+            font-size: 14px;
+            color: #6e6e73;
+            padding: 8px 16px;
+            background: rgba(247, 247, 247, 0.9);
+            border-radius: 10px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: -0.2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(247, 247, 247, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            color: #6e6e73;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-item strong {
+            color: #1d1d1f;
+            margin-right: 6px;
+            font-weight: 600;
+        }
+
+        /* 三栏布局：左侧问句 + 中间详情（最大） + 右侧Rollout */
+        .main-content {
+            display: flex;
+            flex-direction: row;
+            gap: 16px;
+            height: calc(100vh - 260px);
+            min-height: 600px;
+            justify-content: flex-start;
+            align-items: stretch;
+        }
+
+        .browse-row {
+            display: flex;
+            gap: 12px;
+            flex: 0 0 auto;
+            height: min(260px, 30vh);
+            min-height: 140px;
+            max-height: 290px;
+            align-items: stretch;
+        }
+
+        /* 左侧问句列表 - 固定宽度 */
+        .sidebar {
+            flex: 0 0 340px;
+            width: 340px;
+            min-width: 300px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .sidebar-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            font-weight: 600;
+            font-size: 16px;
+            color: #1d1d1f;
+            flex-shrink: 0;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        }
+
+        .question-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .question-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .question-item:hover {
+            background: rgba(102, 126, 234, 0.08);
+            transform: translateX(4px);
+        }
+
+        .question-item.active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            border-left: 4px solid #667eea;
+            transform: translateX(6px);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+        }
+
+        .question-text {
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            color: #1d1d1f;
+            font-weight: 500;
+        }
+
+        .question-meta {
+            display: flex;
+            gap: 6px;
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .question-item.active .question-meta {
+            opacity: 0.85;
+        }
+
+        .question-badge {
+            background: rgba(120, 120, 128, 0.12);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #6e6e73;
+            font-weight: 600;
+        }
+
+        .question-item.active .question-badge {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.25) 0%, rgba(118, 75, 162, 0.25) 100%);
+            color: #667eea;
+        }
+
+        .question-item:hover .question-badge {
+            background: rgba(102, 126, 234, 0.15);
+        }
+
+        /* 右侧 rollout 列表 - 固定宽度 */
+        .rollout-panel {
+            flex: 0 0 380px;
+            width: 380px;
+            min-width: 340px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .rollout-panel:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .rollout-panel-header {
+            padding: 16px 18px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        }
+
+        .rollout-panel-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+            letter-spacing: -0.3px;
+        }
+
+        .rollout-panel-meta {
+            display: flex;
+            gap: 10px;
+            font-size: 12px;
+            color: #6e6e73;
+            flex-wrap: wrap;
+        }
+
+        .rollout-panel-meta span {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .rollout-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 16px;
+        }
+
+        .rollout-item {
+            border: 2px solid rgba(0, 0, 0, 0.06);
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            position: relative;
+        }
+
+        .rollout-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+            transform: translateX(-4px);
+        }
+
+        .rollout-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.25);
+            transform: translateX(-6px) scale(1.02);
+        }
+
+        .rollout-item.selected::before {
+            content: '';
+            position: absolute;
+            left: -2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 60%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .rollout-info {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .score-compact {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            flex-shrink: 0;
+            min-width: 90px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .score-value {
+            font-size: 16px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+
+        .score-delta {
+            font-size: 11px;
+            color: #86868b;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+        }
+
+        .score-delta.best {
+            color: #11998e;
+            font-weight: 700;
+        }
+
+        .score-bar-track {
+            width: 100%;
+            height: 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-top: 6px;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .score-badge {
+            font-size: 19px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 12px;
+            color: white;
+            min-width: 75px;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .score-high {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .score-medium {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .score-low {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .score-negative {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        .bar-high { background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%); }
+        .bar-medium { background: linear-gradient(90deg, #f093fb 0%, #f5576c 100%); }
+        .bar-low { background: linear-gradient(90deg, #fa709a 0%, #fee140 100%); }
+        .bar-negative { background: linear-gradient(90deg, #ff6b6b 0%, #ee5a6f 100%); }
+
+        .rollout-meta {
+            font-size: 12px;
+            color: #6e6e73;
+            flex: 1;
+            min-width: 0;
+            line-height: 1.5;
+        }
+
+        .rollout-meta div {
+            margin: 3px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .rollout-meta strong {
+            color: #1d1d1f;
+            font-weight: 700;
+        }
+
+        /* 中间详情面板（占据最大空间，flex:1） */
+        .detail-panel {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .detail-panel:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .detail-panel-header {
+            padding: 20px 24px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.15);
+            flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+        }
+
+        .detail-panel-title {
+            font-weight: 700;
+            font-size: 20px;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .detail-empty {
+            text-align: center;
+            padding: 100px 32px;
+            color: #86868b;
+        }
+
+        .detail-empty-icon {
+            font-size: 72px;
+            margin-bottom: 24px;
+            opacity: 0.4;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+
+        .messages-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .message {
+            border-radius: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 16px;
+        }
+
+        .message:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .message-system {
+            background: linear-gradient(135deg, rgba(247, 247, 247, 0.95) 0%, rgba(240, 240, 240, 0.95) 100%);
+            border-left: 4px solid #86868b;
+        }
+
+        .message-user {
+            background: linear-gradient(135deg, rgba(227, 242, 253, 0.8) 0%, rgba(207, 232, 253, 0.8) 100%);
+            border-left: 4px solid #2196F3;
+        }
+
+        .message-assistant {
+            background: linear-gradient(135deg, rgba(243, 229, 245, 0.8) 0%, rgba(233, 209, 245, 0.8) 100%);
+            border-left: 4px solid #9c27b0;
+            box-shadow: 0 2px 12px rgba(156, 39, 176, 0.1);
+        }
+
+        .message-tool {
+            background: linear-gradient(135deg, rgba(255, 243, 224, 0.8) 0%, rgba(255, 233, 204, 0.8) 100%);
+            border-left: 4px solid #ff9800;
+        }
+
+        .message-header {
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: #6e6e73;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 18px;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.8px;
+            transition: all 0.2s ease;
+        }
+
+        .message-header:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: #1d1d1f;
+        }
+
+        .message-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-index {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .collapse-icon {
+            font-size: 12px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0.5;
+            color: #667eea;
+        }
+
+        .message.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+
+        .message-header:hover .collapse-icon {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .message.collapsed .message-header:hover .collapse-icon {
+            transform: rotate(-90deg) scale(1.2);
+        }
+
+        .message-content {
+            font-size: 15px;
+            line-height: 1.8;
+            word-wrap: break-word;
+            padding: 20px;
+            color: #1d1d1f;
+            max-height: none;
+            overflow: visible;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .message.collapsed .message-content {
+            max-height: 0;
+            padding: 0 20px;
+            overflow: hidden;
+        }
+
+        .message-content pre {
+            white-space: pre-wrap;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.06) 100%);
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Markdown样式 - 苹果风格 */
+        .markdown-content {
+            line-height: 1.8;
+            color: #1d1d1f;
+        }
+
+        .markdown-content h1, .markdown-content h2, .markdown-content h3,
+        .markdown-content h4, .markdown-content h5 {
+            margin-top: 28px;
+            margin-bottom: 16px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #1d1d1f;
+        }
+
+        .markdown-content h1 {
+            font-size: 30px;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            padding-bottom: 12px;
+        }
+
+        .markdown-content h2 {
+            font-size: 24px;
+            border-left: 4px solid rgba(102, 126, 234, 0.3);
+            padding-left: 12px;
+        }
+
+        .markdown-content h3 {
+            font-size: 20px;
+        }
+
+        .markdown-content h4 {
+            font-size: 18px;
+            color: #2d2d2f;
+            border-left: 3px solid rgba(102, 126, 234, 0.25);
+            padding-left: 10px;
+        }
+
+        .markdown-content h5 {
+            font-size: 16px;
+            color: #424245;
+            font-weight: 600;
+        }
+
+        .markdown-content p {
+            margin: 16px 0;
+        }
+
+        .markdown-content ul, .markdown-content ol {
+            margin: 16px 0;
+            padding-left: 32px;
+        }
+
+        .markdown-content li {
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+
+        .markdown-content ul li::marker {
+            color: #667eea;
+        }
+
+        .markdown-content hr {
+            border: none;
+            border-top: 1px solid rgba(0, 0, 0, 0.12);
+            margin: 28px 0;
+            background: transparent;
+        }
+
+        .markdown-content ol li::marker {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .markdown-content code {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .markdown-content pre {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1d1d1f 100%);
+            color: #f5f5f7;
+            padding: 24px;
+            border-radius: 16px;
+            overflow-x: auto;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: #f5f5f7;
+            font-weight: 400;
+        }
+
+        .markdown-content strong {
+            font-weight: 700;
+            color: #1d1d1f;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid rgba(102, 126, 234, 0.4);
+            padding-left: 20px;
+            padding: 16px 20px;
+            margin: 20px 0;
+            color: #6e6e73;
+            font-style: italic;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-radius: 8px;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+
+        .markdown-content th, .markdown-content td {
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            padding: 14px 18px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .markdown-content th {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%);
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+
+        .markdown-content tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .markdown-content a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .markdown-content a:hover {
+            border-bottom-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 2px 4px;
+            margin: -2px -4px;
+            border-radius: 4px;
+        }
+
+        .think-section {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.12) 0%, rgba(255, 152, 0, 0.12) 100%);
+            border-left: 4px solid #ff9800;
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 28px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 16px rgba(255, 152, 0, 0.1);
+        }
+
+        .think-title {
+            font-weight: 700;
+            color: #f57c00;
+            margin-bottom: 16px;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .think-title::before {
+            content: '💭';
+            font-size: 20px;
+        }
+
+        .metadata-section {
+            margin-top: 28px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(247, 247, 247, 0.8) 0%, rgba(240, 240, 240, 0.8) 100%);
+            border-radius: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .metadata-title {
+            font-weight: 700;
+            margin-bottom: 18px;
+            color: #1d1d1f;
+            font-size: 17px;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            font-size: 14px;
+        }
+
+        .metadata-item {
+            color: #6e6e73;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .metadata-item strong {
+            color: #1d1d1f;
+            font-weight: 700;
+            margin-right: 6px;
+        }
+
+        .reward-info {
+            margin-top: 28px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(255, 235, 59, 0.15) 0%, rgba(255, 193, 7, 0.15) 100%);
+            border-left: 4px solid #ffc107;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(255, 193, 7, 0.1);
+        }
+
+        .reward-info-title {
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            font-size: 17px;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reward-detail {
+            font-size: 14px;
+            color: #6e6e73;
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+        }
+
+        .reward-detail strong {
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+
+        .empty-state {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            padding: 80px 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .empty-state-icon {
+            font-size: 72px;
+            margin-bottom: 24px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 20px;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        .empty-state-subtext {
+            font-size: 15px;
+            color: #86868b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(0, 0, 0, 0.06);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 滚动条美化 - 苹果风格 */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            transition: all 0.2s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.6) 0%, rgba(118, 75, 162, 0.6) 100%);
+            background-clip: padding-box;
+        }
+
+        /* 全局平滑滚动 */
+        * {
+            scroll-behavior: smooth;
+        }
+
+        @media (max-width: 1400px) {
+            .sidebar {
+                flex: 0 0 280px;
+                width: 280px;
+            }
+
+            .rollout-panel {
+                flex: 0 0 340px;
+                width: 340px;
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .main-content {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 260px);
+            }
+
+            .sidebar {
+                flex: 0 0 auto;
+                width: 100%;
+                max-height: 300px;
+            }
+
+            .rollout-panel {
+                flex: 0 0 auto;
+                width: 100%;
+                max-height: 350px;
+            }
+
+            .detail-panel {
+                flex: 1;
+                min-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Agent RL Rollout Viewer</h1>
+            <div class="controls">
+                <div class="step-selector" id="stepSelector" style="display: none;">
+                    <select id="stepSelect" onchange="onStepChange()">
+                        <option value="">-- 选择Step --</option>
+                    </select>
+                    <span class="step-info" id="stepInfo"></span>
+                </div>
+            </div>
+
+            <div class="stats" id="stats"></div>
+        </div>
+
+        <div id="content">
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <div class="empty-state-text">正在加载Step列表...</div>
+                <div class="empty-state-subtext">请稍候</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE =
+            typeof window.__AGENT_RL_API_BASE__ === 'string' && window.__AGENT_RL_API_BASE__
+                ? window.__AGENT_RL_API_BASE__
+                : window.location.origin;
+
+        const API_TOKEN =
+            (typeof window.__AGENT_RL_API_TOKEN__ === 'string' && window.__AGENT_RL_API_TOKEN__) ||
+            new URLSearchParams(window.location.search).get('token') ||
+            '';
+
+        function apiUrl(p) {
+            if (!API_TOKEN) {
+                return API_BASE + p;
+            }
+            const sep = p.indexOf('?') >= 0 ? '&' : '?';
+            return API_BASE + p + sep + 'token=' + encodeURIComponent(API_TOKEN);
+        }
+
+        let stepsData = [];
+        let currentStepIndex = -1;
+        let rootFolder = '';
+        let autoSelectStep = null;
+
+        let clusteredData = [];
+        let currentClusterIndex = 0;
+        let currentRolloutIndex = -1;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            void loadInitialSteps();
+        });
+
+        async function loadInitialSteps() {
+            try {
+                const r = await fetch(apiUrl('/api/steps'));
+                let data = null;
+                let bodyText = '';
+                try {
+                    data = await r.json();
+                } catch (e) {
+                    try {
+                        bodyText = await r.text();
+                    } catch {
+                        bodyText = '';
+                    }
+                }
+
+                if (!r.ok) {
+                    const msg =
+                        (data && (data.error || data.message)) ||
+                        bodyText ||
+                        r.statusText ||
+                        '请求失败';
+                    throw new Error(msg);
+                }
+                if (data && data.error) {
+                    throw new Error(data.error);
+                }
+
+                stepsData = (data && data.steps) || [];
+                rootFolder = (data && data.rootFolder) || '';
+                const params = new URLSearchParams(window.location.search);
+                autoSelectStep = params.get('step') || autoSelectStep;
+                renderStepSelector();
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">无法加载 Step 列表</div>
+                        <div class="empty-state-subtext">${escapeHtml(msg)}</div>
+                    </div>`;
+            }
+        }
+
+        function renderStepSelector() {
+            const selectorDiv = document.getElementById('stepSelector');
+            const selectEl = document.getElementById('stepSelect');
+            const infoEl = document.getElementById('stepInfo');
+
+            selectorDiv.style.display = 'flex';
+
+            const totalFiles = stepsData.reduce((sum, s) => sum + s.fileCount, 0);
+
+            selectEl.innerHTML = '<option value="">-- 选择Step (' + stepsData.length + '个) --</option>';
+            stepsData.forEach((step, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                option.textContent = step.name + ' (' + step.fileCount + ' files)';
+                selectEl.appendChild(option);
+            });
+
+            infoEl.textContent = '共 ' + stepsData.length + ' 个Step, ' + totalFiles + ' 个文件 · 浏览器查看（127.0.0.1）';
+
+            if (autoSelectStep) {
+                const idx = stepsData.findIndex(s => s.name === autoSelectStep);
+                if (idx >= 0) {
+                    selectEl.value = String(idx);
+                    void onStepChange();
+                }
+            }
+        }
+
+        async function onStepChange() {
+            const selectEl = document.getElementById('stepSelect');
+            const idx = parseInt(selectEl.value, 10);
+
+            if (isNaN(idx) || idx < 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <div class="empty-state-text">请从上方选择一个Step</div>
+                        <div class="empty-state-subtext">将加载轻量摘要以快速展示问句列表；点击 Rollout 时再加载完整轨迹</div>
+                    </div>
+                `;
+                return;
+            }
+
+            currentStepIndex = idx;
+            const step = stepsData[idx];
+
+            showLoading('正在读取 JSON 并生成问句摘要…', '数据量大时首次解析可能仍需一些时间，请稍候');
+
+            try {
+                const r = await fetch(apiUrl('/api/summary?step=' + encodeURIComponent(step.name)));
+                let data = null;
+                let bodyText = '';
+                try {
+                    data = await r.json();
+                } catch (e) {
+                    try {
+                        bodyText = await r.text();
+                    } catch {
+                        bodyText = '';
+                    }
+                }
+
+                if (!r.ok) {
+                    const msg =
+                        (data && (data.error || data.message)) ||
+                        bodyText ||
+                        r.statusText ||
+                        '加载失败';
+                    throw new Error(msg);
+                }
+                if (data && data.error) {
+                    throw new Error(data.error);
+                }
+
+                clusterFromSummaries((data && data.summaries) || []);
+                renderLayout();
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">加载 Step 失败</div>
+                        <div class="empty-state-subtext">${escapeHtml(msg)}</div>
+                    </div>`;
+            }
+        }
+
+        // 文件选择处理
+
+
+        async function handleFiles(e) {
+            const files = Array.from(e.target.files).filter(f => f.name.endsWith('.json'));
+
+            if (files.length === 0) {
+                alert('未找到JSON文件！');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const rollouts = [];
+
+                for (const file of files) {
+                    const content = await file.text();
+                    const data = JSON.parse(content);
+                    rollouts.push(data);
+                }
+
+                clusterData(rollouts);
+                renderLayout();
+            } catch (error) {
+                console.error('Error processing files:', error);
+                alert('处理文件时出错: ' + error.message);
+            }
+        }
+
+        // 提取问句的函数
+        function extractQuestion(content) {
+            // 优先检查 <NLU(仅供参考)>
+            const nluMatch = content.match(/^(.*?)<NLU\(仅供参考\)>/s);
+            if (nluMatch) {
+                return nluMatch[1].trim();
+            }
+
+            // 其次检查 <当前系统时间>
+            const timeMatch = content.match(/^(.*?)<当前系统时间>/s);
+            if (timeMatch) {
+                return timeMatch[1].trim();
+            }
+
+            // 如果都没有，返回第一行或前200个字符
+            const firstLine = content.split('\n')[0].trim();
+            return firstLine.substring(0, 200);
+        }
+
+        function rolloutScore(r) {
+            if (r == null) return 0;
+            if (typeof r.score === 'number') return r.score;
+            return r.reward?.score ?? 0;
+        }
+
+        /** 摘要行或本地完整对象（可有 _full） */
+        function clusterFromSummaries(items) {
+            const clusters = {};
+
+            items.forEach(item => {
+                const q = item.question || '未找到user内容';
+                if (!clusters[q]) {
+                    clusters[q] = [];
+                }
+                clusters[q].push(item);
+            });
+
+            clusteredData = Object.entries(clusters).map(([content, rollouts]) => {
+                const sortedRollouts = rollouts.sort((a, b) => rolloutScore(b) - rolloutScore(a));
+                const avgScore =
+                    sortedRollouts.reduce((sum, r) => sum + rolloutScore(r), 0) / sortedRollouts.length;
+
+                return {
+                    content,
+                    rollouts: sortedRollouts,
+                    count: sortedRollouts.length,
+                    avgScore
+                };
+            });
+
+            clusteredData.sort((a, b) => b.avgScore - a.avgScore);
+        }
+
+        function clusterData(rollouts) {
+            let i = 0;
+            const items = rollouts.map(rollout => {
+                const messages = rollout.messages || [];
+                let extractedQuestion = '';
+                for (let j = messages.length - 1; j >= 0; j--) {
+                    if (messages[j].role === 'user') {
+                        const c = messages[j].content;
+                        const raw = typeof c === 'string' ? c : JSON.stringify(c);
+                        extractedQuestion = extractQuestion(raw);
+                        break;
+                    }
+                }
+                if (!extractedQuestion) {
+                    extractedQuestion = '未找到user内容';
+                }
+                return {
+                    file: 'local_' + (i++),
+                    score: rolloutScore(rollout),
+                    question: extractedQuestion,
+                    request_id: rollout.request_id,
+                    timestamp: rollout.timestamp,
+                    run_time: rollout.run_time,
+                    _full: rollout
+                };
+            });
+            clusterFromSummaries(items);
+        }
+
+        function renderLayout() {
+            const contentDiv = document.getElementById('content');
+
+            // 更新统计信息
+            const totalRollouts = clusteredData.reduce((sum, c) => sum + c.count, 0);
+            const totalClusters = clusteredData.length;
+            const avgScore = totalRollouts > 0 ?
+                (clusteredData.reduce((sum, c) => sum + c.avgScore * c.count, 0) / totalRollouts).toFixed(3) : '0';
+
+            // 显示当前step信息
+            const currentStep = currentStepIndex >= 0 ? stepsData[currentStepIndex] : null;
+            const stepLabel = currentStep ? ` - ${currentStep.name}` : '';
+
+            document.getElementById('stats').innerHTML = `
+                ${currentStep ? `<div class="stat-item"><strong>当前Step:</strong> ${currentStep.name}</div>` : ''}
+                <div class="stat-item"><strong>总样本数:</strong> ${totalRollouts}</div>
+                <div class="stat-item"><strong>聚类数:</strong> ${totalClusters}</div>
+                <div class="stat-item"><strong>平均分数:</strong> ${avgScore}</div>
+            `;
+
+            // 三栏布局：左侧问句 | 中间详情（最大） | 右侧Rollout
+            contentDiv.innerHTML = `
+                <div class="main-content">
+                    <div class="sidebar">
+                        <div class="sidebar-header">📋 问句列表 (${totalClusters})</div>
+                        <div class="question-list">
+                            ${clusteredData.map((cluster, idx) => `
+                                <div class="question-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
+                                    <div class="question-text">${escapeHtml(cluster.content)}</div>
+                                    <div class="question-meta">
+                                        <span class="question-badge">样本: ${cluster.count}</span>
+                                        <span class="question-badge">平均: ${cluster.avgScore.toFixed(3)}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="detail-panel" id="detailPanel">
+                        <div class="detail-panel-header">
+                            <div class="detail-panel-title">📝 Rollout 详细内容</div>
+                        </div>
+                        <div class="detail-content">
+                            <div class="detail-empty">
+                                <div class="detail-empty-icon">👈</div>
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">请先选择问句和Rollout</div>
+                                <div style="font-size: 14px;">点击左侧问句，再点击右侧的任一 Rollout 查看完整轨迹</div>
+                                <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">系统将自动定位到最后一条 Assistant 回答</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rollout-panel" id="rolloutPanel">
+                        ${renderRolloutList(0)}
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectQuestion(index) {
+            currentClusterIndex = index;
+            currentRolloutIndex = -1;
+
+            // 更新左侧列表选中状态
+            document.querySelectorAll('.question-item').forEach((item, idx) => {
+                if (idx === index) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+
+            // 更新右侧rollout列表
+            document.getElementById('rolloutPanel').innerHTML = renderRolloutList(index);
+
+            // 清空中间详情
+            document.querySelector('.detail-content').innerHTML = `
+                <div class="detail-empty">
+                    <div class="detail-empty-icon">👉</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">请选择右侧的 Rollout</div>
+                    <div style="font-size: 14px;">点击右侧任一 Rollout 查看完整轨迹详情</div>
+                    <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">系统将自动定位到最后一条 Assistant 回答</div>
+                </div>
+            `;
+        }
+
+        function scoreBarClass(score) {
+            if (score > 0.5) return 'bar-high';
+            if (score > 0) return 'bar-medium';
+            if (score === 0) return 'bar-low';
+            return 'bar-negative';
+        }
+
+        function renderRolloutList(clusterIdx) {
+            const cluster = clusteredData[clusterIdx];
+            const scores = cluster.rollouts.map((r) => rolloutScore(r));
+            const maxScore = scores.length ? Math.max(...scores) : 0;
+            const minScore = scores.length ? Math.min(...scores) : 0;
+
+            return `
+                <div class="rollout-panel-header">
+                    <div class="rollout-panel-title">🎯 Rollout（相对最高分）</div>
+                    <div class="rollout-panel-meta">
+                        <span>共 ${cluster.count} 条</span>
+                        <span>最高 ${maxScore.toFixed(3)}</span>
+                        <span>最低 ${minScore.toFixed(3)}</span>
+                    </div>
+                </div>
+                <div class="rollout-list">
+                    ${cluster.rollouts.map((rollout, rolloutIdx) => renderRolloutItem(rollout, clusterIdx, rolloutIdx, maxScore, minScore)).join('')}
+                </div>
+            `;
+        }
+
+        function renderRolloutItem(rollout, clusterIdx, rolloutIdx, maxScore, minScore) {
+            const score = rolloutScore(rollout);
+            const delta = score - maxScore;
+            const deltaStr = delta === 0 ? '与最高相同' : (delta >= 0 ? '' : '较最高 ' + delta.toFixed(3));
+            const range = maxScore - minScore;
+            const barPct = range === 0 ? 100 : Math.max(5, Math.min(100, ((score - minScore) / range) * 100));
+
+            return `
+                <div class="rollout-item" role="button" tabindex="0" onclick="selectRollout(${clusterIdx}, ${rolloutIdx})">
+                    <div class="rollout-info">
+                        <div class="score-compact">
+                            <span class="score-value">${score.toFixed(3)}</span>
+                            <span class="score-delta ${delta === 0 ? 'best' : ''}">${deltaStr}</span>
+                            <div class="score-bar-track" aria-hidden="true">
+                                <div class="score-bar-fill ${scoreBarClass(score)}" style="width: ${barPct}%;"></div>
+                            </div>
+                        </div>
+                        <div class="rollout-meta">
+                            <div><strong>ID</strong> ${rollout.request_id?.substring(0, 8) || 'N/A'}</div>
+                            <div><strong>时间</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'} · <strong>运行</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function scrollDetailToLastAssistant() {
+            const panel = document.querySelector('.detail-content');
+            const target = document.getElementById('last-assistant-anchor');
+            if (!panel || !target) {
+                return;
+            }
+            const run = () => {
+                const pRect = panel.getBoundingClientRect();
+                const tRect = target.getBoundingClientRect();
+                const nextTop = panel.scrollTop + (tRect.top - pRect.top) - 12;
+                panel.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+            };
+            requestAnimationFrame(() => requestAnimationFrame(run));
+        }
+
+        function selectRollout(clusterIdx, rolloutIdx) {
+            void selectRolloutAsync(clusterIdx, rolloutIdx);
+        }
+
+        async function selectRolloutAsync(clusterIdx, rolloutIdx) {
+            currentRolloutIndex = rolloutIdx;
+
+            document.querySelectorAll('.rollout-item').forEach((item, idx) => {
+                if (idx === rolloutIdx) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+
+            const slot = clusteredData[clusterIdx].rollouts[rolloutIdx];
+            const detailEl = document.querySelector('.detail-content');
+
+            if (slot._full) {
+                detailEl.innerHTML = renderRolloutDetail(slot._full);
+                bindCollapseEvents();
+                scrollDetailToLastAssistant();
+                return;
+            }
+
+            if (currentStepIndex < 0 || !stepsData[currentStepIndex]) {
+                detailEl.innerHTML = '<div class="detail-empty">无法加载：缺少 Step 上下文</div>';
+                return;
+            }
+
+            detailEl.innerHTML =
+                '<div class="loading" style="padding:24px;"><div class="loading-spinner"></div><div>正在加载完整轨迹…</div></div>';
+
+            try {
+                const step = stepsData[currentStepIndex];
+                const r = await fetch(
+                    apiUrl(
+                        '/api/rollout?step=' +
+                            encodeURIComponent(step.name) +
+                            '&file=' +
+                            encodeURIComponent(slot.file)
+                    )
+                );
+                let full = null;
+                let bodyText = '';
+                try {
+                    full = await r.json();
+                } catch (e) {
+                    try {
+                        bodyText = await r.text();
+                    } catch {
+                        bodyText = '';
+                    }
+                }
+
+                if (!r.ok || (full && full.error)) {
+                    const msg =
+                        (full && (full.error || full.message)) || bodyText || r.statusText || '加载失败';
+                    throw new Error(msg);
+                }
+                slot._full = full || {};
+                detailEl.innerHTML = renderRolloutDetail(slot._full);
+                bindCollapseEvents();
+                scrollDetailToLastAssistant();
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                detailEl.innerHTML = `<div class="detail-empty"><div class="detail-empty-icon">⚠️</div><div>${escapeHtml(msg)}</div></div>`;
+            }
+        }
+
+        function bindCollapseEvents() {
+            document.querySelectorAll('.message-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const message = this.parentElement;
+                    message.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        function renderRolloutDetail(rollout) {
+            return `
+                ${renderMessages(rollout.messages)}
+                ${renderRewardInfo(rollout.reward)}
+                ${renderMetadata(rollout)}
+            `;
+        }
+
+        function renderMessages(messages) {
+            if (!messages || messages.length === 0) return '<p>无消息数据</p>';
+
+            // 找到最后一个assistant的索引
+            let lastAssistantIndex = -1;
+            for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i].role === 'assistant') {
+                    lastAssistantIndex = i;
+                    break;
+                }
+            }
+
+            return `
+                <div class="messages-container">
+                    ${messages.map((msg, idx) => {
+                        const roleClass = `message-${msg.role}`;
+                        let content = msg.content;
+
+                        // 处理tool content (可能是数组)
+                        if (Array.isArray(content)) {
+                            content = content.map(c => c.text || JSON.stringify(c)).join('\n');
+                        }
+
+                        // 截断过长的system消息
+                        if (msg.role === 'system' && content.length > 500) {
+                            content = content.substring(0, 500) + '... (已截断)';
+                        }
+
+                        // 除了最后一个assistant，其他所有消息默认折叠
+                        const shouldCollapse = idx !== lastAssistantIndex;
+
+                        // 判断是否是最后一个assistant（需要特殊渲染）
+                        const isLastAssistant = idx === lastAssistantIndex && msg.role === 'assistant';
+
+                        return `
+                            <div class="message ${roleClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
+                                <div class="message-header">
+                                    <div class="message-header-left">
+                                        <span>${msg.role} ${msg.generation_time ? `(生成: ${msg.generation_time.toFixed(2)}s)` : ''}</span>
+                                        <span class="message-index">#${idx + 1}</span>
+                                    </div>
+                                    <span class="collapse-icon">▼</span>
+                                </div>
+                                <div class="message-content">
+                                    ${isLastAssistant ? renderAssistantContent(content) : `<pre>${escapeHtml(content)}</pre>`}
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function renderAssistantContent(content) {
+            // 检查是否包含</think>
+            if (content.includes('</think>')) {
+                const parts = content.split('</think>');
+                const thinkContent = parts[0].replace(/<think>/g, '').trim();
+                const answerContent = parts.slice(1).join('</think>').trim();
+
+                return `
+                    ${thinkContent ? `
+                        <div class="think-section">
+                            <div class="think-title">思维链</div>
+                            <div class="markdown-content">${simpleMarkdown(thinkContent)}</div>
+                        </div>
+                    ` : ''}
+                    ${answerContent ? `
+                        <div class="markdown-content">${simpleMarkdown(answerContent)}</div>
+                    ` : ''}
+                `;
+            } else {
+                // 没有</think>标签，直接渲染markdown
+                return `<div class="markdown-content">${simpleMarkdown(content)}</div>`;
+            }
+        }
+
+        function splitTableRow(line) {
+            const t = line.trim();
+            if (!t.startsWith('|')) return [];
+            return t.split('|').slice(1, -1).map((c) => c.trim());
+        }
+
+        function isSeparatorTableRow(line) {
+            const cells = splitTableRow(line);
+            if (cells.length < 2) return false;
+            return cells.every((c) => {
+                const x = c.replace(/\s/g, '');
+                return /^:?-{1,}:?$/.test(x);
+            });
+        }
+
+        function isTableRowLine(line) {
+            const t = line.trim();
+            return t.startsWith('|') && t.endsWith('|') && t.includes('|', 1);
+        }
+
+        function cellInlineMd(raw) {
+            let h = escapeHtml(raw);
+            h = h.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+            return h;
+        }
+
+        function parseAlignmentCell(sepCell) {
+            const x = sepCell.replace(/\s/g, '');
+            if (/^:[-]+:$/.test(x)) return 'center';
+            if (/^[-]+:$/.test(x)) return 'right';
+            return 'left';
+        }
+
+        function buildTableHtml(blockLines, sepIdx) {
+            const header = splitTableRow(blockLines[0]);
+            if (!header.length) return '';
+            const alignCells = splitTableRow(blockLines[sepIdx]);
+            const aligns = header.map((_, i) => parseAlignmentCell(alignCells[i] || '---'));
+            const bodyRows = blockLines.slice(sepIdx + 1).map(splitTableRow);
+            let html = '<table><thead><tr>';
+            header.forEach((h, i) => {
+                html += `<th style="text-align:${aligns[i]}">${cellInlineMd(h)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            for (const row of bodyRows) {
+                html += '<tr>';
+                for (let i = 0; i < header.length; i++) {
+                    const cell = row[i] !== undefined ? row[i] : '';
+                    html += `<td style="text-align:${aligns[i]}">${cellInlineMd(cell)}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            return html;
+        }
+
+        /** 抽出 GFM 管道表格，避免被段落逻辑拆散 */
+        function extractPipeTables(text) {
+            const lines = text.split(/\r?\n/);
+            const tables = [];
+            const out = [];
+            let i = 0;
+            while (i < lines.length) {
+                if (isTableRowLine(lines[i])) {
+                    const start = i;
+                    let j = i;
+                    while (j < lines.length && isTableRowLine(lines[j])) j++;
+                    const block = lines.slice(start, j);
+                    const sepIdx = block.findIndex(isSeparatorTableRow);
+                    if (sepIdx === 1 && block.length >= 2) {
+                        const tableHtml = buildTableHtml(block, sepIdx);
+                        if (tableHtml) {
+                            const id = tables.length;
+                            tables.push(tableHtml);
+                            out.push('');
+                            out.push(`<<<TABLE_${id}>>>`);
+                            out.push('');
+                            i = j;
+                            continue;
+                        }
+                    }
+                }
+                out.push(lines[i]);
+                i++;
+            }
+            return { text: out.join('\n'), tables };
+        }
+
+        function isHorizontalRuleLine(line) {
+            const t = line.trim();
+            if (t.length < 3) return false;
+            return /^(-{3,}|\*{3,}|_{3,})$/.test(t);
+        }
+
+        /** 独立一行的 --- / *** / ___ 转为占位符（表格已在 extractPipeTables 中剥离） */
+        function replaceHorizontalRules(text) {
+            return text
+                .split(/\r?\n/)
+                .map((line) => (isHorizontalRuleLine(line) ? '\nMD_HORIZONTAL_RULE_PLACEHOLDER\n' : line))
+                .join('\n');
+        }
+
+        const LIST_ITEM_RE = /^(\s*)([-*+])\s+(.+)$/;
+
+        /** 将连续的无序列表行（- / * / +，支持两空格缩进嵌套）转为嵌套 &lt;ul&gt; */
+        function convertMarkdownLists(text) {
+            const lines = text.split(/\r?\n/);
+            const out = [];
+            let i = 0;
+            while (i < lines.length) {
+                const line = lines[i];
+                if (LIST_ITEM_RE.test(line)) {
+                    const block = [];
+                    while (i < lines.length && LIST_ITEM_RE.test(lines[i])) {
+                        const m = lines[i].match(LIST_ITEM_RE);
+                        block.push({ indent: m[1].replace(/\t/g, '    ').length, raw: m[3] });
+                        i++;
+                    }
+                    out.push('');
+                    out.push(listBlockToNestedUl(block));
+                    out.push('');
+                    continue;
+                }
+                out.push(line);
+                i++;
+            }
+            return out.join('\n');
+        }
+
+        function listBlockToNestedUl(block) {
+            if (!block.length) return '';
+            const base = Math.min(...block.map((b) => b.indent));
+            const items = block.map((b) => ({
+                level: Math.max(0, Math.floor((b.indent - base) / 2)),
+                content: b.raw,
+            }));
+
+            function walk(from, minLevel) {
+                let h = '<ul>';
+                let idx = from;
+                while (idx < items.length && items[idx].level >= minLevel) {
+                    if (items[idx].level !== minLevel) break;
+                    const c = items[idx].content;
+                    idx++;
+                    let inner = '';
+                    if (idx < items.length && items[idx].level > minLevel) {
+                        const sub = walk(idx, minLevel + 1);
+                        inner = sub.out;
+                        idx = sub.nextIdx;
+                    }
+                    h += `<li>${c}${inner}</li>`;
+                }
+                h += '</ul>';
+                return { out: h, nextIdx: idx };
+            }
+            return walk(0, 0).out;
+        }
+
+        // 简单的markdown渲染器
+        function simpleMarkdown(text) {
+            const piped = extractPipeTables(text);
+            const withPlaceholders = replaceHorizontalRules(piped.text);
+            const tables = piped.tables;
+
+            let html = escapeHtml(withPlaceholders);
+            for (let t = 0; t < tables.length; t++) {
+                html = html.replace(`&lt;&lt;&lt;TABLE_${t}&gt;&gt;&gt;`, tables[t]);
+            }
+
+            // 代码块（```）
+            html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+            // 行内代码
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // 粗体
+            html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+
+            // 标题（从多到少匹配，避免 #### 被当成 #）
+            html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+            html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            html = html.replace(/MD_HORIZONTAL_RULE_PLACEHOLDER/g, '<hr>');
+
+            html = convertMarkdownLists(html);
+
+            // 段落
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+
+            // 清理空段落
+            html = html.replace(/<p><\/p>/g, '');
+            html = html.replace(/<p>\s*<(h[1-5]|ul|pre|table)/g, '<$1');
+            html = html.replace(/<\/(h[1-5]|ul|pre|table)>\s*<\/p>/g, '</$1>');
+            html = html.replace(/<p>\s*<hr\s*>\s*<\/p>/gi, '<hr>');
+            html = html.replace(/<p>\s*<hr\s*>/gi, '<hr>');
+            html = html.replace(/<hr\s*>\s*<\/p>/gi, '<hr>');
+
+            return html;
+        }
+
+        function renderRewardInfo(reward) {
+            if (!reward || !reward.reward_info) return '';
+
+            const info = reward.reward_info;
+            const ruleRewards = info.rule_reward_info || {};
+
+            return `
+                <div class="reward-info">
+                    <div class="reward-info-title">📊 Reward详情</div>
+                    <div class="reward-detail"><strong>最终分数:</strong> ${info.final_reward?.toFixed(3) || 'N/A'}</div>
+                    <div class="reward-detail"><strong>LLM Reward:</strong> ${info.llm_reward?.toFixed(3) || 'N/A'}</div>
+                    <div class="reward-detail"><strong>Reward响应:</strong> ${info.reward_response || 'N/A'}</div>
+                    ${Object.keys(ruleRewards).length > 0 ? `
+                        <div style="margin-top: 10px;">
+                            <strong>规则奖励:</strong>
+                            ${Object.entries(ruleRewards).map(([rule, data]) => `
+                                <div class="reward-detail" style="margin-left: 15px;">
+                                    - ${rule}: ${Array.isArray(data) ? `${data[0]} (${data[1]})` : data}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function renderMetadata(rollout) {
+            return `
+                <div class="metadata-section">
+                    <div class="metadata-title">ℹ️ 元数据</div>
+                    <div class="metadata-grid">
+                        <div class="metadata-item"><strong>Request ID:</strong> ${rollout.request_id || 'N/A'}</div>
+                        <div class="metadata-item"><strong>时间戳:</strong> ${rollout.timestamp || 'N/A'}</div>
+                        <div class="metadata-item"><strong>数据源:</strong> ${rollout.data_source || 'N/A'}</div>
+                        <div class="metadata-item"><strong>问题:</strong> ${rollout.question || 'N/A'}</div>
+                        <div class="metadata-item"><strong>完成原因:</strong> ${rollout.finish_reason || 'N/A'}</div>
+                        <div class="metadata-item"><strong>运行时间:</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                        ${rollout.tool_usage_counts ? `
+                            <div class="metadata-item"><strong>工具使用:</strong> ${JSON.stringify(rollout.tool_usage_counts)}</div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function showLoading(line1, line2) {
+            line1 = line1 || '正在加载…';
+            line2 = line2 || '';
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div style="color: #1d1d1f; font-weight: 500;">${escapeHtml(line1)}</div>
+                    ${line2 ? `<div style="color:#86868b;font-size:14px;margin-top:10px;">${escapeHtml(line2)}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
