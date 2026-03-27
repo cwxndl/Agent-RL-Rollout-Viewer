@@ -405,6 +405,53 @@
             background: rgba(102, 126, 234, 0.15);
         }
 
+        .question-item-top {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .question-item-top .question-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .question-copy-btn {
+            flex-shrink: 0;
+            margin-top: 2px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.35);
+            background: rgba(255, 255, 255, 0.95);
+            color: #667eea;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+            white-space: nowrap;
+        }
+
+        .question-copy-btn:hover {
+            background: rgba(102, 126, 234, 0.12);
+            border-color: #667eea;
+        }
+
+        .question-copy-btn:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.35);
+        }
+
+        .question-copy-btn.question-copy-btn-done {
+            border-color: #10b981;
+            color: #059669;
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .question-item.active .question-copy-btn {
+            border-color: rgba(102, 126, 234, 0.55);
+            background: rgba(255, 255, 255, 0.85);
+        }
+
         /* 右侧 rollout 列表 - 固定宽度 */
         .rollout-panel {
             flex: 0 0 380px;
@@ -1804,6 +1851,28 @@
             });
         }
 
+        async function copyClusterQuestion(clusterIdx, btn) {
+            const c = clusteredData[clusterIdx];
+            if (!c || typeof c.content !== 'string') {
+                return;
+            }
+            const text = c.content;
+            try {
+                await navigator.clipboard.writeText(text);
+                if (btn) {
+                    const prev = btn.textContent;
+                    btn.textContent = '已复制';
+                    btn.classList.add('question-copy-btn-done');
+                    setTimeout(function () {
+                        btn.textContent = prev;
+                        btn.classList.remove('question-copy-btn-done');
+                    }, 1600);
+                }
+            } catch {
+                alert('复制失败，请检查浏览器剪贴板权限，或手动选中问句文本复制。');
+            }
+        }
+
         function renderQuestionListItems(indices) {
             if (!indices.length) {
                 return '<div class="question-list-empty">无匹配问句，请调整关键字或清空搜索</div>';
@@ -1831,7 +1900,10 @@
                 }
                 blocks.push(`
                 <div class="question-item ${idx === currentClusterIndex ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
-                    <div class="question-text">${escapeHtml(c.content)}</div>
+                    <div class="question-item-top">
+                        <div class="question-text">${escapeHtml(c.content)}</div>
+                        <button type="button" class="question-copy-btn" title="复制该问句全文" aria-label="复制问句" tabindex="0" onclick="event.stopPropagation(); void copyClusterQuestion(${idx}, this);">复制</button>
+                    </div>
                     <div class="question-meta">
                         <span class="question-badge">样本: ${c.count}</span>
                         <span class="question-badge">平均: ${c.avgScore.toFixed(3)}</span>
