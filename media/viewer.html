@@ -1466,7 +1466,10 @@
             currentStepIndex = idx;
             const step = stepsData[idx];
 
-            showLoading('正在读取 JSON 并生成问句摘要…', '服务端并行读取，完成后将自动打开本 Step 下最高分 Rollout 详情');
+            showLoading(
+                '正在读取 JSON 并生成问句摘要…',
+                '首次会全量并行读取并写入 .agent_rl_viewer_summary.json 缓存；文件未变时再次打开将直接命中缓存。完成后自动打开本 Step 最高分 Rollout。'
+            );
 
             try {
                 const r = await fetchWithTimeout(

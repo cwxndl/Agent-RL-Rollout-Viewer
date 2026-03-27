@@ -1,3 +1,6 @@
+# 本地摘要缓存（由 Rollout Viewer 服务端写入各 step_* 目录）
+**/.agent_rl_viewer_summary.json
+
 node_modules/
 *.vsix
 .DS_Store

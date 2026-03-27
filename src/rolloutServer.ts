@@ -7,7 +7,23 @@ import { promisify } from 'util';
 
 const readdir = promisify(fs.readdir);
 const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
 const stat = promisify(fs.stat);
+
+/** 各 step 目录下的摘要缓存文件名（排除在 json 列表外） */
+const SUMMARY_CACHE_FILE = '.agent_rl_viewer_summary.json';
+
+/** 摘要接口并行读取上限（偏 IO 密集，可略高于 CPU 核数） */
+const SUMMARY_READ_CONCURRENCY = 96;
+
+/** 校验缓存时并行 stat 源 json 的并发 */
+const SUMMARY_STAT_CONCURRENCY = 128;
+
+interface SummaryCachePayload {
+    version: 1;
+    files: string[];
+    summaries: Record<string, unknown>[];
+}
 
 export interface RolloutServerHandle {
     port: number;
@@ -32,6 +48,9 @@ function safeStepSegment(name: string): boolean {
 
 function safeJsonBasename(name: string): boolean {
     if (!name || name.includes('/') || name.includes('\\') || name.includes('..')) {
+        return false;
+    }
+    if (name === SUMMARY_CACHE_FILE) {
         return false;
     }
     return name.endsWith('.json');
@@ -83,6 +102,94 @@ function summarizeRollout(data: Record<string, unknown>, file: string): Record<s
         timestamp: data.timestamp,
         run_time: data.run_time
     };
+}
+
+function summarizeRolloutFailed(file: string): Record<string, unknown> {
+    return {
+        file,
+        score: 0,
+        question: '（JSON 解析失败或文件损坏）',
+        request_id: undefined,
+        timestamp: undefined,
+        run_time: undefined
+    };
+}
+
+async function maxSourceMtimeMs(stepDir: string, sortedFiles: string[]): Promise<number> {
+    let max = 0;
+    for (let i = 0; i < sortedFiles.length; i += SUMMARY_STAT_CONCURRENCY) {
+        const chunk = sortedFiles.slice(i, i + SUMMARY_STAT_CONCURRENCY);
+        const times = await Promise.all(
+            chunk.map(async f => {
+                const st = await stat(path.join(stepDir, f));
+                return st.mtimeMs;
+            })
+        );
+        for (const t of times) {
+            if (t > max) {
+                max = t;
+            }
+        }
+    }
+    return max;
+}
+
+async function tryReadSummaryCache(
+    stepDir: string,
+    sortedFiles: string[]
+): Promise<Record<string, unknown>[] | null> {
+    const cachePath = path.join(stepDir, SUMMARY_CACHE_FILE);
+    let cstat: fs.Stats;
+    try {
+        cstat = await stat(cachePath);
+    } catch {
+        return null;
+    }
+    let raw: string;
+    try {
+        raw = await readFile(cachePath, 'utf-8');
+    } catch {
+        return null;
+    }
+    let payload: SummaryCachePayload;
+    try {
+        payload = JSON.parse(raw) as SummaryCachePayload;
+    } catch {
+        return null;
+    }
+    if (
+        payload.version !== 1 ||
+        !Array.isArray(payload.files) ||
+        !Array.isArray(payload.summaries) ||
+        payload.files.length !== sortedFiles.length ||
+        payload.summaries.length !== sortedFiles.length
+    ) {
+        return null;
+    }
+    for (let i = 0; i < sortedFiles.length; i++) {
+        if (payload.files[i] !== sortedFiles[i]) {
+            return null;
+        }
+    }
+    const maxMtime = await maxSourceMtimeMs(stepDir, sortedFiles);
+    if (maxMtime > cstat.mtimeMs + 500) {
+        return null;
+    }
+    return payload.summaries;
+}
+
+async function writeSummaryCache(
+    stepDir: string,
+    sortedFiles: string[],
+    summaries: Record<string, unknown>[]
+): Promise<void> {
+    const cachePath = path.join(stepDir, SUMMARY_CACHE_FILE);
+    const body: SummaryCachePayload = {
+        version: 1,
+        files: sortedFiles,
+        summaries
+    };
+    await writeFile(cachePath, JSON.stringify(body), 'utf-8');
 }
 
 /**
@@ -172,6 +279,7 @@ export function startRolloutServer(rolloutRoot: string, extensionMediaDir: strin
 
             if (pathname === '/api/summary') {
                 const stepName = u.searchParams.get('step') || '';
+                const skipCache = u.searchParams.get('nocache') === '1' || u.searchParams.get('nocache') === 'true';
                 if (!safeStepSegment(stepName)) {
                     json(res, 400, { error: 'Invalid step' });
                     return;
@@ -183,21 +291,29 @@ export function startRolloutServer(rolloutRoot: string, extensionMediaDir: strin
                 }
                 let names: string[];
                 try {
-                    names = (await readdir(stepDir)).filter(f => f.endsWith('.json'));
+                    names = (await readdir(stepDir)).filter(f => safeJsonBasename(f)).sort();
                 } catch {
                     json(res, 404, { error: 'Step not found' });
                     return;
                 }
                 const fileJobs = names
-                    .filter(f => safeJsonBasename(f))
                     .map(file => ({ file, fp: path.join(stepDir, file) }))
                     .filter(({ fp }) => isPathInsideRoot(rolloutRoot, fp));
 
-                /** 并行读取摘要，分块限制并发，避免一次性打开过多文件句柄 */
-                const CONCURRENCY = 32;
+                if (!skipCache && fileJobs.length > 0) {
+                    const cached = await tryReadSummaryCache(
+                        stepDir,
+                        fileJobs.map(j => j.file)
+                    );
+                    if (cached) {
+                        json(res, 200, { summaries: cached, fromCache: true });
+                        return;
+                    }
+                }
+
                 const summaries: Record<string, unknown>[] = [];
-                for (let i = 0; i < fileJobs.length; i += CONCURRENCY) {
-                    const chunk = fileJobs.slice(i, i + CONCURRENCY);
+                for (let i = 0; i < fileJobs.length; i += SUMMARY_READ_CONCURRENCY) {
+                    const chunk = fileJobs.slice(i, i + SUMMARY_READ_CONCURRENCY);
                     const batch = await Promise.all(
                         chunk.map(async ({ file, fp }) => {
                             try {
@@ -205,17 +321,28 @@ export function startRolloutServer(rolloutRoot: string, extensionMediaDir: strin
                                 const data = JSON.parse(raw) as Record<string, unknown>;
                                 return summarizeRollout(data, file);
                             } catch {
-                                return null;
+                                return summarizeRolloutFailed(file);
                             }
                         })
                     );
                     for (const s of batch) {
-                        if (s) {
-                            summaries.push(s);
-                        }
+                        summaries.push(s);
                     }
                 }
-                json(res, 200, { summaries });
+
+                if (fileJobs.length > 0) {
+                    try {
+                        await writeSummaryCache(
+                            stepDir,
+                            fileJobs.map(j => j.file),
+                            summaries
+                        );
+                    } catch {
+                        /* 缓存写入失败不影响返回摘要 */
+                    }
+                }
+
+                json(res, 200, { summaries, fromCache: false });
                 return;
             }
 
