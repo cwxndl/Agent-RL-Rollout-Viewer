@@ -1281,6 +1281,10 @@
             return API_BASE + p + sep + 'token=' + encodeURIComponent(API_TOKEN);
         }
 
+        const FETCH_TIMEOUT_STEPS_MS = 120000;
+        const FETCH_TIMEOUT_SUMMARY_MS = 600000;
+        const FETCH_TIMEOUT_ROLLOUT_MS = 180000;
+
         /** 避免网络/服务异常时 fetch 一直 pending，界面永久停在「正在加载 Step 列表」 */
         async function fetchWithTimeout(url, init, timeoutMs) {
             const ms = timeoutMs || 60000;
@@ -1344,7 +1348,7 @@
                         '缺少 token。请通过扩展生成的带 ?token= 的完整地址打开；不要单独双击打开 viewer.html。若已带 token 仍报错，请刷新页面。'
                     );
                 }
-                const r = await fetchWithTimeout(apiUrl('/api/steps'), {}, 60000);
+                const r = await fetchWithTimeout(apiUrl('/api/steps'), {}, FETCH_TIMEOUT_STEPS_MS);
                 let data = null;
                 let bodyText = '';
                 try {
@@ -1381,7 +1385,9 @@
                 var msg = err instanceof Error ? err.message : String(err);
                 if (err && err.name === 'AbortError') {
                     msg =
-                        '请求超时（60 秒内未完成）。请确认本机扩展已启动查看服务、Rollout 根目录可访问，或 rollout 目录下文件过多导致扫描过慢。';
+                        '请求超时（' +
+                        Math.round(FETCH_TIMEOUT_STEPS_MS / 1000) +
+                        ' 秒内未完成）。请确认扩展已启动查看服务且 URL 带 token；若仍失败请检查网络或本机防火墙。';
                 }
                 showContentError('无法加载 Step 列表', msg);
             }
@@ -1397,17 +1403,27 @@
                 infoEl.style.display = 'inline-block';
             }
 
-            const totalFiles = stepsData.reduce((sum, s) => sum + s.fileCount, 0);
+            const totalFiles = stepsData.reduce(function (sum, s) {
+                return sum + (typeof s.fileCount === 'number' ? s.fileCount : 0);
+            }, 0);
+            const hasUnknownFileCount = stepsData.some(function (s) {
+                return s.fileCount == null;
+            });
 
             selectEl.innerHTML = '<option value="">-- 选择Step (' + stepsData.length + '个) --</option>';
             stepsData.forEach((step, idx) => {
                 const option = document.createElement('option');
                 option.value = idx;
-                option.textContent = step.name + ' (' + step.fileCount + ' files)';
+                option.textContent =
+                    step.fileCount == null ? step.name : step.name + ' (' + step.fileCount + ' files)';
                 selectEl.appendChild(option);
             });
 
-            infoEl.textContent = '共 ' + stepsData.length + ' 个Step, ' + totalFiles + ' 个文件 · 浏览器查看（127.0.0.1）';
+            infoEl.textContent = hasUnknownFileCount
+                ? '共 ' +
+                  stepsData.length +
+                  ' 个Step · 各目录 json 数量在加载该 Step 摘要时统计 · 浏览器查看（127.0.0.1）'
+                : '共 ' + stepsData.length + ' 个Step, ' + totalFiles + ' 个文件 · 浏览器查看（127.0.0.1）';
 
             if (stepsData.length === 0) {
                 document.getElementById('content').innerHTML = `
@@ -1453,7 +1469,11 @@
             showLoading('正在读取 JSON 并生成问句摘要…', '服务端并行读取，完成后将自动打开本 Step 下最高分 Rollout 详情');
 
             try {
-                const r = await fetch(apiUrl('/api/summary?step=' + encodeURIComponent(step.name)));
+                const r = await fetchWithTimeout(
+                    apiUrl('/api/summary?step=' + encodeURIComponent(step.name)),
+                    {},
+                    FETCH_TIMEOUT_SUMMARY_MS
+                );
                 let data = null;
                 let bodyText = '';
                 try {
@@ -1486,7 +1506,13 @@
                     await selectRolloutAsync(0, 0);
                 }
             } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
+                let msg = err instanceof Error ? err.message : String(err);
+                if (err && err.name === 'AbortError') {
+                    msg =
+                        '加载该 Step 摘要超时（约 ' +
+                        Math.round(FETCH_TIMEOUT_SUMMARY_MS / 60000) +
+                        ' 分钟内未完成）。该目录下 json 文件极多时请耐心等待或减少文件数量。';
+                }
                 document.getElementById('content').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">⚠️</div>
@@ -2009,13 +2035,15 @@
 
             try {
                 const step = stepsData[currentStepIndex];
-                const r = await fetch(
+                const r = await fetchWithTimeout(
                     apiUrl(
                         '/api/rollout?step=' +
                             encodeURIComponent(step.name) +
                             '&file=' +
                             encodeURIComponent(slot.file)
-                    )
+                    ),
+                    {},
+                    FETCH_TIMEOUT_ROLLOUT_MS
                 );
                 let full = null;
                 let bodyText = '';
@@ -2039,7 +2067,10 @@
                 bindCollapseEvents();
                 scrollDetailToLastAssistant();
             } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
+                let msg = err instanceof Error ? err.message : String(err);
+                if (err && err.name === 'AbortError') {
+                    msg = '加载单条轨迹超时，请重试或检查 json 文件是否过大。';
+                }
                 detailEl.innerHTML = `<div class="detail-empty"><div class="detail-empty-icon">⚠️</div><div>${escapeHtml(msg)}</div></div>`;
             }
         }

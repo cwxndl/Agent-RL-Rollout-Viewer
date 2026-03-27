@@ -85,32 +85,26 @@ function summarizeRollout(data: Record<string, unknown>, file: string): Record<s
     };
 }
 
+/**
+ * 只枚举 rollout 根目录下的 step_* 文件夹，不对每个目录做 readdir 统计 json 数量。
+ * 若在每个 step 内对海量 .json 做全量 readdir，/api/steps 极易超过一分钟，触发前端超时。
+ */
 async function scanStepFolders(rolloutFolder: string): Promise<
-    { name: string; path: string; fileCount: number }[]
+    { name: string; path: string; fileCount: number | null }[]
 > {
-    const steps: { name: string; path: string; fileCount: number }[] = [];
-    const files = await readdir(rolloutFolder);
-    const checkPromises = files
-        .filter(f => f.startsWith('step_'))
-        .map(async file => {
-            const fullPath = path.join(rolloutFolder, file);
-            try {
-                const fileStat = await stat(fullPath);
-                if (fileStat.isDirectory()) {
-                    const subFiles = await readdir(fullPath);
-                    const jsonCount = subFiles.filter(f => f.endsWith('.json')).length;
-                    return { name: file, path: fullPath, fileCount: jsonCount };
-                }
-            } catch {
-                /* ignore */
-            }
-            return null;
-        });
-    const results = await Promise.all(checkPromises);
-    for (const r of results) {
-        if (r) {
-            steps.push(r);
+    const steps: { name: string; path: string; fileCount: number | null }[] = [];
+    let entries: fs.Dirent[];
+    try {
+        entries = await fs.promises.readdir(rolloutFolder, { withFileTypes: true });
+    } catch {
+        return steps;
+    }
+    for (const ent of entries) {
+        if (!ent.name.startsWith('step_') || !ent.isDirectory()) {
+            continue;
         }
+        const fullPath = path.join(rolloutFolder, ent.name);
+        steps.push({ name: ent.name, path: fullPath, fileCount: null });
     }
     steps.sort((a, b) => {
         const numA = parseInt(a.name.replace('step_', ''), 10);
