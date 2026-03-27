@@ -206,22 +206,29 @@ function startRolloutServer(rolloutRoot, extensionMediaDir) {
                     json(res, 404, { error: 'Step not found' });
                     return;
                 }
+                const fileJobs = names
+                    .filter(f => safeJsonBasename(f))
+                    .map(file => ({ file, fp: path.join(stepDir, file) }))
+                    .filter(({ fp }) => isPathInsideRoot(rolloutRoot, fp));
+                /** 并行读取摘要，分块限制并发，避免一次性打开过多文件句柄 */
+                const CONCURRENCY = 32;
                 const summaries = [];
-                for (const file of names) {
-                    if (!safeJsonBasename(file)) {
-                        continue;
-                    }
-                    const fp = path.join(stepDir, file);
-                    if (!isPathInsideRoot(rolloutRoot, fp)) {
-                        continue;
-                    }
-                    try {
-                        const raw = await readFile(fp, 'utf-8');
-                        const data = JSON.parse(raw);
-                        summaries.push(summarizeRollout(data, file));
-                    }
-                    catch {
-                        /* skip bad file */
+                for (let i = 0; i < fileJobs.length; i += CONCURRENCY) {
+                    const chunk = fileJobs.slice(i, i + CONCURRENCY);
+                    const batch = await Promise.all(chunk.map(async ({ file, fp }) => {
+                        try {
+                            const raw = await readFile(fp, 'utf-8');
+                            const data = JSON.parse(raw);
+                            return summarizeRollout(data, file);
+                        }
+                        catch {
+                            return null;
+                        }
+                    }));
+                    for (const s of batch) {
+                        if (s) {
+                            summaries.push(s);
+                        }
                     }
                 }
                 json(res, 200, { summaries });

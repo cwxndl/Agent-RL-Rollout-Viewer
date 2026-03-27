@@ -201,6 +201,83 @@
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
         }
 
+        .question-search-wrap {
+            padding: 10px 14px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .question-search-wrap input[type="search"] {
+            width: 100%;
+            padding: 10px 14px 10px 36px;
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236e6e73' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E") no-repeat 12px center;
+            color: #1d1d1f;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .question-search-wrap input[type="search"]::placeholder {
+            color: #86868b;
+            font-weight: 400;
+        }
+
+        .question-search-wrap input[type="search"]:hover {
+            border-color: #667eea;
+        }
+
+        .question-search-wrap input[type="search"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .question-section-header {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            padding: 10px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: #667eea;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 247, 250, 0.96) 100%);
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+            border-left: 3px solid #667eea;
+            margin-top: 4px;
+        }
+
+        .question-section-header.const-header {
+            color: #059669;
+            border-left-color: #10b981;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(236, 253, 245, 0.9) 100%);
+            border-bottom-color: rgba(16, 185, 129, 0.25);
+        }
+
+        .question-section-header .section-hint {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: none;
+            color: #86868b;
+            margin-top: 4px;
+            letter-spacing: 0;
+        }
+
+        .question-list-empty {
+            padding: 28px 16px;
+            text-align: center;
+            font-size: 14px;
+            color: #86868b;
+            line-height: 1.5;
+        }
+
         .question-list {
             overflow-y: auto;
             flex: 1;
@@ -1052,10 +1129,10 @@
         </div>
 
         <div id="content">
-            <div class="empty-state">
-                <div class="empty-state-icon">📊</div>
-                <div class="empty-state-text">正在加载Step列表...</div>
-                <div class="empty-state-subtext">请稍候</div>
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div style="color: #1d1d1f; font-weight: 500;">正在加载 Step 列表…</div>
+                <div style="color:#86868b;font-size:14px;margin-top:10px;">请稍候</div>
             </div>
         </div>
     </div>
@@ -1093,6 +1170,7 @@
         });
 
         async function loadInitialSteps() {
+            showLoading('正在加载 Step 列表…', '请稍候');
             try {
                 const r = await fetch(apiUrl('/api/steps'));
                 let data = null;
@@ -1122,7 +1200,10 @@
                 stepsData = (data && data.steps) || [];
                 rootFolder = (data && data.rootFolder) || '';
                 const params = new URLSearchParams(window.location.search);
-                autoSelectStep = params.get('step') || autoSelectStep;
+                const urlStep = params.get('step');
+                if (urlStep) {
+                    autoSelectStep = urlStep;
+                }
                 renderStepSelector();
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err);
@@ -1154,34 +1235,48 @@
 
             infoEl.textContent = '共 ' + stepsData.length + ' 个Step, ' + totalFiles + ' 个文件 · 浏览器查看（127.0.0.1）';
 
+            if (stepsData.length === 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📂</div>
+                        <div class="empty-state-text">未找到 Step 目录</div>
+                        <div class="empty-state-subtext">请在 rollout 根目录下放置 step_* 文件夹（内含 .json）</div>
+                    </div>`;
+                return;
+            }
+
+            let initialIdx = stepsData.length - 1;
             if (autoSelectStep) {
-                const idx = stepsData.findIndex(s => s.name === autoSelectStep);
-                if (idx >= 0) {
-                    selectEl.value = String(idx);
-                    void onStepChange();
+                const named = stepsData.findIndex(s => s.name === autoSelectStep);
+                if (named >= 0) {
+                    initialIdx = named;
                 }
             }
+            selectEl.value = String(initialIdx);
+            void loadStepAtIndex(initialIdx);
         }
 
-        async function onStepChange() {
-            const selectEl = document.getElementById('stepSelect');
-            const idx = parseInt(selectEl.value, 10);
-
-            if (isNaN(idx) || idx < 0) {
+        /** 按索引加载 Step（不依赖 select 的 change 事件，避免界面卡在「加载中」） */
+        async function loadStepAtIndex(idx) {
+            if (idx < 0 || idx >= stepsData.length) {
                 document.getElementById('content').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📊</div>
-                        <div class="empty-state-text">请从上方选择一个Step</div>
-                        <div class="empty-state-subtext">将加载轻量摘要以快速展示问句列表；点击 Rollout 时再加载完整轨迹</div>
-                    </div>
-                `;
+                        <div class="empty-state-text">请从上方选择一个 Step</div>
+                        <div class="empty-state-subtext">将加载轻量摘要以展示问句列表；服务端已并行读取 JSON 以加速</div>
+                    </div>`;
                 return;
+            }
+
+            const selectEl = document.getElementById('stepSelect');
+            if (selectEl) {
+                selectEl.value = String(idx);
             }
 
             currentStepIndex = idx;
             const step = stepsData[idx];
 
-            showLoading('正在读取 JSON 并生成问句摘要…', '数据量大时首次解析可能仍需一些时间，请稍候');
+            showLoading('正在读取 JSON 并生成问句摘要…', '服务端并行读取，完成后将自动打开本 Step 下最高分 Rollout 详情');
 
             try {
                 const r = await fetch(apiUrl('/api/summary?step=' + encodeURIComponent(step.name)));
@@ -1211,6 +1306,11 @@
 
                 clusterFromSummaries((data && data.summaries) || []);
                 renderLayout();
+                if (clusteredData.length > 0 && clusteredData[0].rollouts.length > 0) {
+                    currentClusterIndex = 0;
+                    currentRolloutIndex = 0;
+                    await selectRolloutAsync(0, 0);
+                }
             } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err);
                 document.getElementById('content').innerHTML = `
@@ -1220,6 +1320,22 @@
                         <div class="empty-state-subtext">${escapeHtml(msg)}</div>
                     </div>`;
             }
+        }
+
+        function onStepChange() {
+            const selectEl = document.getElementById('stepSelect');
+            const idx = parseInt(selectEl.value, 10);
+            if (isNaN(idx) || idx < 0) {
+                document.getElementById('content').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <div class="empty-state-text">请从上方选择一个Step</div>
+                        <div class="empty-state-subtext">将加载轻量摘要以快速展示问句列表；点击 Rollout 时再加载完整轨迹</div>
+                    </div>
+                `;
+                return;
+            }
+            void loadStepAtIndex(idx);
         }
 
         // 文件选择处理
@@ -1277,32 +1393,50 @@
             return r.reward?.score ?? 0;
         }
 
-        /** 摘要行或本地完整对象（可有 _full） */
+        /** 摘要行或本地完整对象（可有 _full） - 已优化性能并增加方差计算 */
         function clusterFromSummaries(items) {
-            const clusters = {};
+            const clusters = new Map();
 
             items.forEach(item => {
                 const q = item.question || '未找到user内容';
-                if (!clusters[q]) {
-                    clusters[q] = [];
+                if (!clusters.has(q)) {
+                    clusters.set(q, []);
                 }
-                clusters[q].push(item);
+                clusters.get(q).push(item);
             });
 
-            clusteredData = Object.entries(clusters).map(([content, rollouts]) => {
+            clusteredData = Array.from(clusters.entries()).map(([content, rollouts]) => {
                 const sortedRollouts = rollouts.sort((a, b) => rolloutScore(b) - rolloutScore(a));
-                const avgScore =
-                    sortedRollouts.reduce((sum, r) => sum + rolloutScore(r), 0) / sortedRollouts.length;
+                const scores = sortedRollouts.map(r => rolloutScore(r));
+                const avgScore = scores.length ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
+                const firstS = scores.length ? scores[0] : 0;
+                const allEqual =
+                    scores.length <= 1 ||
+                    scores.every(s => Math.abs(s - firstS) < 1e-9);
+
+                let variance = 0;
+                if (scores.length > 1 && !allEqual) {
+                    const mean = avgScore;
+                    variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length;
+                }
 
                 return {
                     content,
                     rollouts: sortedRollouts,
                     count: sortedRollouts.length,
-                    avgScore
+                    avgScore: parseFloat(avgScore.toFixed(4)),
+                    variance: parseFloat(variance.toFixed(6)),
+                    isConstant: allEqual
                 };
             });
 
-            clusteredData.sort((a, b) => b.avgScore - a.avgScore);
+            // 先展示「方差≠0」问句（分数有变化），再展示「方差=0」；组内按平均分降序
+            clusteredData.sort((a, b) => {
+                if (a.isConstant !== b.isConstant) {
+                    return a.isConstant ? 1 : -1;
+                }
+                return b.avgScore - a.avgScore;
+            });
         }
 
         function clusterData(rollouts) {
@@ -1334,6 +1468,124 @@
             clusterFromSummaries(items);
         }
 
+        function getFilteredQuestionIndices(query) {
+            const q = (query || '').trim().toLowerCase();
+            if (!q) {
+                return clusteredData.map((_, i) => i);
+            }
+            return clusteredData
+                .map((c, i) => (String(c.content).toLowerCase().includes(q) ? i : -1))
+                .filter((i) => i >= 0);
+        }
+
+        function renderQuestionListItems(indices) {
+            if (!indices.length) {
+                return '<div class="question-list-empty">无匹配问句，请调整关键字或清空搜索</div>';
+            }
+            let prevCat = null;
+            const blocks = [];
+            for (const idx of indices) {
+                const c = clusteredData[idx];
+                const cat = c.isConstant ? 'const' : 'var';
+                if (cat !== prevCat) {
+                    if (cat === 'var') {
+                        blocks.push(`
+                            <div class="question-section-header">
+                                方差 ≠ 0（分数有变化）
+                                <span class="section-hint">同问句下多条 Rollout 的 score 不完全相同</span>
+                            </div>`);
+                    } else {
+                        blocks.push(`
+                            <div class="question-section-header const-header">
+                                方差 = 0（分数恒定）
+                                <span class="section-hint">同问句下 score 完全相同（如全 1、全 0）</span>
+                            </div>`);
+                    }
+                    prevCat = cat;
+                }
+                blocks.push(`
+                <div class="question-item ${idx === currentClusterIndex ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
+                    <div class="question-text">${escapeHtml(c.content)}</div>
+                    <div class="question-meta">
+                        <span class="question-badge">样本: ${c.count}</span>
+                        <span class="question-badge">平均: ${c.avgScore.toFixed(3)}</span>
+                        <span class="question-badge">方差: ${c.variance.toFixed(6)}</span>
+                        ${c.isConstant
+                            ? '<span class="question-badge" style="background:#10b981;color:white;">恒定</span>'
+                            : '<span class="question-badge" style="background:#f59e0b;color:white;">变化</span>'}
+                    </div>
+                </div>`);
+            }
+            return blocks.join('');
+        }
+
+        function updateQuestionListTitle(filteredCount, total, hasQuery) {
+            const titleEl = document.getElementById('questionListTitle');
+            if (!titleEl) {
+                return;
+            }
+            if (hasQuery) {
+                titleEl.textContent = '问句列表 (' + filteredCount + '/' + total + ')';
+            } else {
+                titleEl.textContent = '问句列表 (' + total + ')';
+            }
+        }
+
+        function applyQuestionFilter() {
+            const inp = document.getElementById('questionSearchInput');
+            const q = inp ? inp.value : '';
+            const listEl = document.getElementById('questionList');
+            if (!listEl || !clusteredData.length) {
+                return;
+            }
+            const indices = getFilteredQuestionIndices(q);
+            const total = clusteredData.length;
+            const hasQuery = !!(q && q.trim());
+            updateQuestionListTitle(indices.length, total, hasQuery);
+            listEl.innerHTML = renderQuestionListItems(indices);
+
+            if (!indices.length) {
+                currentClusterIndex = -1;
+                currentRolloutIndex = -1;
+                const rolloutPanel = document.getElementById('rolloutPanel');
+                if (rolloutPanel) {
+                    rolloutPanel.innerHTML = `
+                        <div class="rollout-panel-header">
+                            <div class="rollout-panel-title">🎯 Rollout</div>
+                            <div class="rollout-panel-meta"><span>无匹配问句</span></div>
+                        </div>
+                        <div class="rollout-list">
+                            <div class="question-list-empty">请修改搜索条件</div>
+                        </div>`;
+                }
+                const detailContent = document.querySelector('.detail-content');
+                if (detailContent) {
+                    detailContent.innerHTML = `
+                        <div class="detail-empty">
+                            <div class="detail-empty-icon">🔍</div>
+                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">当前无匹配问句</div>
+                            <div style="font-size: 14px;">清空搜索框或更换关键字以显示问句列表</div>
+                        </div>`;
+                }
+                return;
+            }
+
+            if (!indices.includes(currentClusterIndex)) {
+                selectQuestion(indices[0]);
+            }
+        }
+
+        function onQuestionSearchKeydown(e) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                const inp = document.getElementById('questionSearchInput');
+                if (inp) {
+                    inp.value = '';
+                    applyQuestionFilter();
+                }
+            }
+        }
+
         function renderLayout() {
             const contentDiv = document.getElementById('content');
 
@@ -1343,33 +1595,41 @@
             const avgScore = totalRollouts > 0 ?
                 (clusteredData.reduce((sum, c) => sum + c.avgScore * c.count, 0) / totalRollouts).toFixed(3) : '0';
 
-            // 显示当前step信息
+            // 显示当前step信息 + 新增方差分类统计
             const currentStep = currentStepIndex >= 0 ? stepsData[currentStepIndex] : null;
-            const stepLabel = currentStep ? ` - ${currentStep.name}` : '';
+            const constantCount = clusteredData.filter(c => c.isConstant).length;
+            const variableCount = clusteredData.length - constantCount;
 
             document.getElementById('stats').innerHTML = `
                 ${currentStep ? `<div class="stat-item"><strong>当前Step:</strong> ${currentStep.name}</div>` : ''}
                 <div class="stat-item"><strong>总样本数:</strong> ${totalRollouts}</div>
                 <div class="stat-item"><strong>聚类数:</strong> ${totalClusters}</div>
+                <div class="stat-item"><strong>恒定分数:</strong> ${constantCount} <small>(方差=0)</small></div>
+                <div class="stat-item"><strong>变化分数:</strong> ${variableCount}</div>
                 <div class="stat-item"><strong>平均分数:</strong> ${avgScore}</div>
             `;
 
-            // 三栏布局：左侧问句 | 中间详情（最大） | 右侧Rollout
+            currentClusterIndex = 0;
+            currentRolloutIndex = -1;
+
+            // 三栏布局：左侧问句（带方差分类） | 中间详情（最大） | 右侧Rollout
             contentDiv.innerHTML = `
                 <div class="main-content">
                     <div class="sidebar">
-                        <div class="sidebar-header">📋 问句列表 (${totalClusters})</div>
-                        <div class="question-list">
-                            ${clusteredData.map((cluster, idx) => `
-                                <div class="question-item ${idx === 0 ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
-                                    <div class="question-text">${escapeHtml(cluster.content)}</div>
-                                    <div class="question-meta">
-                                        <span class="question-badge">样本: ${cluster.count}</span>
-                                        <span class="question-badge">平均: ${cluster.avgScore.toFixed(3)}</span>
-                                    </div>
-                                </div>
-                            `).join('')}
+                        <div class="sidebar-header">
+                            📋 <span id="questionListTitle">问句列表 (${totalClusters})</span>
+                            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+                                <span style="font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(245,158,11,0.15);color:#b45309;font-weight:600;">变化 · ${variableCount} 问句</span>
+                                <span style="font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(16,185,129,0.15);color:#047857;font-weight:600;">恒定 · ${constantCount} 问句</span>
+                            </div>
+                            <div style="margin-top:8px;font-size:12px;color:#86868b;line-height:1.45;">
+                                下方按「方差≠0 / 方差=0」分组展示，与顶部「聚类数 / 恒定分数」统计一致。
+                            </div>
                         </div>
+                        <div class="question-search-wrap">
+                            <input type="search" id="questionSearchInput" placeholder="搜索问句关键字…" autocomplete="off" oninput="applyQuestionFilter()" onkeydown="onQuestionSearchKeydown(event)" />
+                        </div>
+                        <div class="question-list" id="questionList"></div>
                     </div>
 
                     <div class="detail-panel" id="detailPanel">
@@ -1391,14 +1651,20 @@
                     </div>
                 </div>
             `;
+
+            const listEl = document.getElementById('questionList');
+            if (listEl) {
+                listEl.innerHTML = renderQuestionListItems(getFilteredQuestionIndices(''));
+            }
         }
 
         function selectQuestion(index) {
             currentClusterIndex = index;
             currentRolloutIndex = -1;
 
-            // 更新左侧列表选中状态
-            document.querySelectorAll('.question-item').forEach((item, idx) => {
+            // 更新左侧列表选中状态（按 data-index，与搜索过滤后的 DOM 顺序无关）
+            document.querySelectorAll('.question-item').forEach((item) => {
+                const idx = parseInt(item.getAttribute('data-index'), 10);
                 if (idx === index) {
                     item.classList.add('active');
                 } else {
