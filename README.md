@@ -54,7 +54,7 @@
 
 ```bash
 # 克隆仓库
-git clone <your-repo>
+git clone https://github.com/cwxndl/Agent-RL-Rollout-Viewer.git
 cd agent-rl-viewer
 
 # 安装依赖
