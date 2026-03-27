@@ -627,20 +627,38 @@
         }
 
         .detail-panel-header {
-            padding: 20px 24px;
+            padding: 16px 20px;
             border-bottom: 2px solid rgba(102, 126, 234, 0.15);
             flex-shrink: 0;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
         }
 
+        .detail-panel-header-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 16px;
+        }
+
         .detail-panel-title {
             font-weight: 700;
-            font-size: 20px;
+            font-size: 18px;
             color: #1d1d1f;
             letter-spacing: -0.5px;
             display: flex;
             align-items: center;
             gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .detail-json-toolbar-inline {
+            display: none;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
         }
 
         .detail-content {
@@ -866,16 +884,6 @@
             list-style-type: decimal;
         }
 
-        .detail-json-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid rgba(102, 126, 234, 0.15);
-        }
-
         .btn-json-toggle {
             padding: 8px 14px;
             border-radius: 10px;
@@ -894,23 +902,97 @@
         }
 
         .detail-raw-json {
-            margin-bottom: 20px;
+            margin-top: 24px;
+            margin-bottom: 8px;
             border-radius: 12px;
             overflow: hidden;
-            border: 1px solid rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 0, 0, 0.12);
         }
 
-        .detail-raw-json-pre {
-            margin: 0;
-            max-height: min(50vh, 420px);
-            overflow: auto;
-            padding: 16px;
+        .detail-raw-json-head {
+            padding: 10px 14px;
             font-size: 12px;
-            line-height: 1.5;
+            font-weight: 600;
+            color: #c4b5fd;
+            background: linear-gradient(135deg, #3d3d42 0%, #2d2d30 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .detail-raw-json-tree {
+            margin: 0;
+            max-height: min(55vh, 480px);
+            overflow: auto;
+            padding: 14px 16px;
+            font-size: 12px;
+            line-height: 1.55;
             background: linear-gradient(135deg, #2d2d2d 0%, #1d1d1f 100%);
             color: #e8e8ed;
             font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-            white-space: pre;
+        }
+
+        .json-fold-root {
+            min-height: 8px;
+        }
+
+        .json-node {
+            border-left: 2px solid rgba(167, 139, 250, 0.35);
+            margin: 6px 0 6px 4px;
+            padding-left: 10px;
+        }
+
+        .json-node > summary.json-summary {
+            cursor: pointer;
+            color: #a5b4fc;
+            user-select: none;
+            list-style: none;
+            font-weight: 600;
+        }
+
+        .json-node > summary.json-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .json-node > summary.json-summary::before {
+            content: '▸ ';
+            display: inline-block;
+            width: 1em;
+            color: #818cf8;
+            transition: transform 0.15s ease;
+        }
+
+        .json-node[open] > summary.json-summary::before {
+            transform: rotate(90deg);
+        }
+
+        .json-children {
+            margin-top: 8px;
+        }
+
+        .json-row {
+            margin: 3px 0;
+            padding-left: 4px;
+            word-break: break-word;
+        }
+
+        .json-key {
+            color: #f9a8d4;
+        }
+
+        .json-idx {
+            color: #93c5fd;
+            margin-right: 4px;
+        }
+
+        .json-lit {
+            color: #e8e8ed;
+        }
+
+        .json-string-fold > summary {
+            color: #fde68a;
+        }
+
+        .json-err {
+            color: #fca5a5;
         }
 
         .markdown-content hr {
@@ -1791,6 +1873,7 @@
             if (!indices.length) {
                 currentClusterIndex = -1;
                 currentRolloutIndex = -1;
+                setDetailJsonToolbarVisible(false);
                 const rolloutPanel = document.getElementById('rolloutPanel');
                 if (rolloutPanel) {
                     rolloutPanel.innerHTML = `
@@ -1879,7 +1962,13 @@
 
                     <div class="detail-panel" id="detailPanel">
                         <div class="detail-panel-header">
-                            <div class="detail-panel-title">📝 Rollout 详细内容</div>
+                            <div class="detail-panel-header-row">
+                                <div class="detail-panel-title">📝 Rollout 详细内容</div>
+                                <div class="detail-json-toolbar-inline" id="detailJsonToolbar" style="display: none;" aria-hidden="true">
+                                    <button type="button" class="btn-json-toggle" id="btnToggleRawJson" onclick="toggleDetailRawJson()">查看原始 JSON</button>
+                                    <button type="button" class="btn-json-toggle" id="btnCopyRawJson" onclick="copyDetailRawJson()">复制 JSON</button>
+                                </div>
+                            </div>
                         </div>
                         <div class="detail-content">
                             <div class="detail-empty">
@@ -1925,6 +2014,7 @@
                 void selectRolloutAsync(index, 0);
             } else {
                 currentRolloutIndex = -1;
+                setDetailJsonToolbarVisible(false);
                 document.querySelector('.detail-content').innerHTML = `
                     <div class="detail-empty">
                         <div class="detail-empty-icon">📭</div>
@@ -2024,15 +2114,18 @@
             if (slot._full) {
                 detailEl.innerHTML = renderRolloutDetail(slot._full);
                 bindCollapseEvents();
+                finalizeRolloutDetailView();
                 scrollDetailToLastAssistant();
                 return;
             }
 
             if (currentStepIndex < 0 || !stepsData[currentStepIndex]) {
+                setDetailJsonToolbarVisible(false);
                 detailEl.innerHTML = '<div class="detail-empty">无法加载：缺少 Step 上下文</div>';
                 return;
             }
 
+            setDetailJsonToolbarVisible(false);
             detailEl.innerHTML =
                 '<div class="loading" style="padding:24px;"><div class="loading-spinner"></div><div>正在加载完整轨迹…</div></div>';
 
@@ -2068,12 +2161,14 @@
                 slot._full = full || {};
                 detailEl.innerHTML = renderRolloutDetail(slot._full);
                 bindCollapseEvents();
+                finalizeRolloutDetailView();
                 scrollDetailToLastAssistant();
             } catch (err) {
                 let msg = err instanceof Error ? err.message : String(err);
                 if (err && err.name === 'AbortError') {
                     msg = '加载单条轨迹超时，请重试或检查 json 文件是否过大。';
                 }
+                setDetailJsonToolbarVisible(false);
                 detailEl.innerHTML = `<div class="detail-empty"><div class="detail-empty-icon">⚠️</div><div>${escapeHtml(msg)}</div></div>`;
             }
         }
@@ -2089,29 +2184,163 @@
 
         let detailRolloutPayload = null;
 
+        function setDetailJsonToolbarVisible(visible) {
+            const t = document.getElementById('detailJsonToolbar');
+            if (!t) {
+                return;
+            }
+            t.style.display = visible ? 'flex' : 'none';
+            t.setAttribute('aria-hidden', visible ? 'false' : 'true');
+        }
+
+        function resetDetailRawJsonPanel() {
+            const panel = document.getElementById('detailRawJsonPanel');
+            const btn = document.getElementById('btnToggleRawJson');
+            const tree = document.getElementById('detailRawJsonTree');
+            if (panel) {
+                panel.style.display = 'none';
+            }
+            if (btn) {
+                btn.textContent = '查看原始 JSON';
+            }
+            if (tree) {
+                tree.innerHTML = '';
+            }
+        }
+
+        function finalizeRolloutDetailView() {
+            setDetailJsonToolbarVisible(true);
+            resetDetailRawJsonPanel();
+        }
+
+        function jsonPreviewObject(o) {
+            if (o === null || typeof o !== 'object') {
+                return '';
+            }
+            if (Array.isArray(o)) {
+                return '[' + o.length + ']';
+            }
+            return '{' + Object.keys(o).length + ' keys}';
+        }
+
+        function renderFoldableJsonValue(val, depth) {
+            const maxOpenDepth = 1;
+            if (val === null) {
+                return '<span class="json-lit">null</span>';
+            }
+            const t = typeof val;
+            if (t === 'string') {
+                if (val.length > 240) {
+                    return (
+                        '<details class="json-node json-string-fold">' +
+                        '<summary class="json-summary json-lit">字符串 · ' +
+                        val.length +
+                        ' 字符（点击展开）</summary><div class="json-children"><span class="json-lit json-str">' +
+                        escapeHtml(JSON.stringify(val)) +
+                        '</span></div></details>'
+                    );
+                }
+                return '<span class="json-lit">' + escapeHtml(JSON.stringify(val)) + '</span>';
+            }
+            if (t === 'number' || t === 'boolean') {
+                return '<span class="json-lit">' + String(val) + '</span>';
+            }
+            if (t !== 'object') {
+                return '<span class="json-lit">' + escapeHtml(String(val)) + '</span>';
+            }
+            if (Array.isArray(val)) {
+                if (val.length === 0) {
+                    return '<span class="json-lit">[]</span>';
+                }
+                const items = val.map(function (item, i) {
+                    if (item !== null && typeof item === 'object') {
+                        return (
+                            '<details class="json-node"><summary class="json-summary"><span class="json-idx">[' +
+                            i +
+                            ']</span> ' +
+                            escapeHtml(jsonPreviewObject(item)) +
+                            '</summary><div class="json-children">' +
+                            renderFoldableJsonValue(item, depth + 1) +
+                            '</div></details>'
+                        );
+                    }
+                    return (
+                        '<div class="json-row"><span class="json-idx">[' +
+                        i +
+                        ']</span> ' +
+                        renderFoldableJsonValue(item, depth + 1) +
+                        '</div>'
+                    );
+                });
+                return '<div class="json-array">' + items.join('') + '</div>';
+            }
+            const keys = Object.keys(val);
+            if (keys.length === 0) {
+                return '<span class="json-lit">{}</span>';
+            }
+            const openAttr = depth < maxOpenDepth ? ' open' : '';
+            const rows = keys.map(function (k) {
+                const v = val[k];
+                const keyHtml = escapeHtml(JSON.stringify(k));
+                if (v !== null && typeof v === 'object') {
+                    return (
+                        '<details class="json-node"' +
+                        openAttr +
+                        '><summary class="json-summary">' +
+                        keyHtml +
+                        ': ' +
+                        escapeHtml(jsonPreviewObject(v)) +
+                        '</summary><div class="json-children">' +
+                        renderFoldableJsonValue(v, depth + 1) +
+                        '</div></details>'
+                    );
+                }
+                return (
+                    '<div class="json-row"><span class="json-key">' +
+                    keyHtml +
+                    '</span>: ' +
+                    renderFoldableJsonValue(v, depth + 1) +
+                    '</div>'
+                );
+            });
+            return '<div class="json-object">' + rows.join('') + '</div>';
+        }
+
+        function renderFoldableJsonRoot(payload) {
+            try {
+                return '<div class="json-fold-root">' + renderFoldableJsonValue(payload, 0) + '</div>';
+            } catch (e) {
+                return '<div class="json-err">' + escapeHtml(String(e)) + '</div>';
+            }
+        }
+
         function toggleDetailRawJson() {
             const panel = document.getElementById('detailRawJsonPanel');
-            const pre = document.getElementById('detailRawJsonPre');
+            const tree = document.getElementById('detailRawJsonTree');
             const btn = document.getElementById('btnToggleRawJson');
-            if (!panel || !pre) {
+            if (!panel || !tree) {
                 return;
             }
             const hidden = panel.style.display === 'none' || panel.style.display === '';
             if (hidden) {
                 try {
-                    pre.textContent = JSON.stringify(detailRolloutPayload, null, 2);
+                    tree.innerHTML = renderFoldableJsonRoot(detailRolloutPayload);
                 } catch (e) {
-                    pre.textContent = String(e);
+                    tree.innerHTML = '<div class="json-err">' + escapeHtml(String(e)) + '</div>';
                 }
                 panel.style.display = 'block';
                 if (btn) {
                     btn.textContent = '隐藏原始 JSON';
                 }
+                requestAnimationFrame(function () {
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
             } else {
                 panel.style.display = 'none';
                 if (btn) {
                     btn.textContent = '查看原始 JSON';
                 }
+                tree.innerHTML = '';
             }
         }
 
@@ -2131,23 +2360,20 @@
                     }, 1600);
                 }
             } catch {
-                alert('复制失败，请展开原始 JSON 后手动选择文本复制，或检查浏览器剪贴板权限。');
+                alert('复制失败，请检查浏览器剪贴板权限，或稍后重试。');
             }
         }
 
         function renderRolloutDetail(rollout) {
             detailRolloutPayload = rollout;
             return `
-                <div class="detail-json-toolbar">
-                    <button type="button" class="btn-json-toggle" id="btnToggleRawJson" onclick="toggleDetailRawJson()">查看原始 JSON</button>
-                    <button type="button" class="btn-json-toggle" id="btnCopyRawJson" onclick="copyDetailRawJson()">复制 JSON</button>
-                </div>
-                <div id="detailRawJsonPanel" class="detail-raw-json" style="display: none;">
-                    <pre id="detailRawJsonPre" class="detail-raw-json-pre"></pre>
-                </div>
                 ${renderMessages(rollout.messages)}
                 ${renderRewardInfo(rollout.reward)}
                 ${renderMetadata(rollout)}
+                <div id="detailRawJsonPanel" class="detail-raw-json" style="display: none;">
+                    <div class="detail-raw-json-head">原始 JSON（点击节点标题展开/折叠；复制仍使用完整 JSON 文本）</div>
+                    <div id="detailRawJsonTree" class="detail-raw-json-tree"></div>
+                </div>
             `;
         }
 
