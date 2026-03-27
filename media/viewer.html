@@ -2171,7 +2171,7 @@
         const UL_ITEM_RE = /^(\s*)([-*+])\s+(.+)$/;
         const OL_ITEM_RE = /^(\s*)(\d+)\.\s+(.+)$/;
 
-        /** 将连续的列表行（无序 -/*/+ 或有序 1. 2.，支持两空格缩进嵌套）转为嵌套 ul/ol */
+        /** 将连续的列表行（无序：减号/星号/加号列表项，或有序 1. 2.，支持两空格缩进嵌套）转为嵌套 ul/ol */
         function convertMarkdownLists(text) {
             const lines = text.split(/\r?\n/);
             const out = [];
