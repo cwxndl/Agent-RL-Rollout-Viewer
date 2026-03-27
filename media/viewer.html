@@ -270,6 +270,57 @@
             letter-spacing: 0;
         }
 
+        .variance-filter-chip {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+            user-select: none;
+        }
+
+        .variance-filter-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .variance-filter-chip.active {
+            border-color: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        .variance-filter-chip.var-chip {
+            background: rgba(245, 158, 11, 0.15);
+            color: #b45309;
+        }
+
+        .variance-filter-chip.var-chip.active {
+            background: rgba(245, 158, 11, 0.35);
+        }
+
+        .variance-filter-chip.const-chip {
+            background: rgba(16, 185, 129, 0.15);
+            color: #047857;
+        }
+
+        .variance-filter-chip.const-chip.active {
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        /* 内嵌 HTML 片段（助手回复中的推广条等） */
+        .markdown-content .embedded-html-block {
+            margin: 16px 0;
+            max-width: 100%;
+        }
+
+        .markdown-content .embedded-html-block img {
+            max-width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
+
         .question-list-empty {
             padding: 28px 16px;
             text-align: center;
@@ -789,6 +840,11 @@
             color: #667eea;
         }
 
+        .markdown-content ol li::marker {
+            color: #667eea;
+            font-weight: 700;
+        }
+
         .markdown-content hr {
             border: none;
             border-top: 1px solid rgba(0, 0, 0, 0.12);
@@ -1165,6 +1221,9 @@
         let currentClusterIndex = 0;
         let currentRolloutIndex = -1;
 
+        /** 问句侧栏筛选：全部 | 仅方差≠0 | 仅方差=0 */
+        let questionCategoryFilter = 'all';
+
         window.addEventListener('DOMContentLoaded', () => {
             void loadInitialSteps();
         });
@@ -1468,14 +1527,55 @@
             clusterFromSummaries(items);
         }
 
+        /** 按类别得到聚类下标，并在类别内按方差降序（恒定类方差均为 0 时按平均分降序） */
+        function getSortedClusterIndicesForCategory(filter) {
+            const all = clusteredData.map((_, i) => i);
+            let idxs = all;
+            if (filter === 'variable') {
+                idxs = all.filter((i) => !clusteredData[i].isConstant);
+                idxs.sort((a, b) => clusteredData[b].variance - clusteredData[a].variance);
+            } else if (filter === 'constant') {
+                idxs = all.filter((i) => clusteredData[i].isConstant);
+                idxs.sort((a, b) => {
+                    const dv = clusteredData[b].variance - clusteredData[a].variance;
+                    if (Math.abs(dv) > 1e-12) {
+                        return dv;
+                    }
+                    return clusteredData[b].avgScore - clusteredData[a].avgScore;
+                });
+            } else {
+                idxs = [...all];
+            }
+            return idxs;
+        }
+
         function getFilteredQuestionIndices(query) {
             const q = (query || '').trim().toLowerCase();
+            const baseOrder = getSortedClusterIndicesForCategory(questionCategoryFilter);
             if (!q) {
-                return clusteredData.map((_, i) => i);
+                return baseOrder;
             }
-            return clusteredData
-                .map((c, i) => (String(c.content).toLowerCase().includes(q) ? i : -1))
-                .filter((i) => i >= 0);
+            return baseOrder.filter((i) => String(clusteredData[i].content).toLowerCase().includes(q));
+        }
+
+        function setQuestionCategoryFilter(filter) {
+            if (questionCategoryFilter === filter) {
+                questionCategoryFilter = 'all';
+            } else {
+                questionCategoryFilter = filter;
+            }
+            document.querySelectorAll('.variance-filter-chip').forEach((el) => {
+                const f = el.getAttribute('data-filter') || '';
+                el.classList.toggle('active', f === questionCategoryFilter);
+            });
+            applyQuestionFilter();
+        }
+
+        function syncVarianceChipActive() {
+            document.querySelectorAll('.variance-filter-chip').forEach((el) => {
+                const f = el.getAttribute('data-filter') || '';
+                el.classList.toggle('active', f === questionCategoryFilter);
+            });
         }
 
         function renderQuestionListItems(indices) {
@@ -1611,6 +1711,7 @@
 
             currentClusterIndex = 0;
             currentRolloutIndex = -1;
+            questionCategoryFilter = 'all';
 
             // 三栏布局：左侧问句（带方差分类） | 中间详情（最大） | 右侧Rollout
             contentDiv.innerHTML = `
@@ -1619,8 +1720,8 @@
                         <div class="sidebar-header">
                             📋 <span id="questionListTitle">问句列表 (${totalClusters})</span>
                             <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
-                                <span style="font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(245,158,11,0.15);color:#b45309;font-weight:600;">变化 · ${variableCount} 问句</span>
-                                <span style="font-size:12px;padding:6px 10px;border-radius:10px;background:rgba(16,185,129,0.15);color:#047857;font-weight:600;">恒定 · ${constantCount} 问句</span>
+                                <span class="variance-filter-chip var-chip" data-filter="variable" role="button" tabindex="0" title="仅显示分数有变化的问句，按方差从大到小" onclick="setQuestionCategoryFilter('variable')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('variable');}">变化 · ${variableCount} 问句</span>
+                                <span class="variance-filter-chip const-chip" data-filter="constant" role="button" tabindex="0" title="仅显示分数恒定的问句；方差相同时按平均分从高到低" onclick="setQuestionCategoryFilter('constant')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('constant');}">恒定 · ${constantCount} 问句</span>
                             </div>
                             <div style="margin-top:8px;font-size:12px;color:#86868b;line-height:1.45;">
                                 下方按「方差≠0 / 方差=0」分组展示，与顶部「聚类数 / 恒定分数」统计一致。
@@ -1656,11 +1757,11 @@
             if (listEl) {
                 listEl.innerHTML = renderQuestionListItems(getFilteredQuestionIndices(''));
             }
+            syncVarianceChipActive();
         }
 
         function selectQuestion(index) {
             currentClusterIndex = index;
-            currentRolloutIndex = -1;
 
             // 更新左侧列表选中状态（按 data-index，与搜索过滤后的 DOM 顺序无关）
             document.querySelectorAll('.question-item').forEach((item) => {
@@ -1672,18 +1773,21 @@
                 }
             });
 
-            // 更新右侧rollout列表
+            // 更新右侧 rollout 列表（已按分数从高到低排序，索引 0 为最高分）
             document.getElementById('rolloutPanel').innerHTML = renderRolloutList(index);
 
-            // 清空中间详情
-            document.querySelector('.detail-content').innerHTML = `
-                <div class="detail-empty">
-                    <div class="detail-empty-icon">👉</div>
-                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">请选择右侧的 Rollout</div>
-                    <div style="font-size: 14px;">点击右侧任一 Rollout 查看完整轨迹详情</div>
-                    <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">系统将自动定位到最后一条 Assistant 回答</div>
-                </div>
-            `;
+            const cluster = clusteredData[index];
+            if (cluster && cluster.rollouts && cluster.rollouts.length > 0) {
+                void selectRolloutAsync(index, 0);
+            } else {
+                currentRolloutIndex = -1;
+                document.querySelector('.detail-content').innerHTML = `
+                    <div class="detail-empty">
+                        <div class="detail-empty-icon">📭</div>
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">该问句下暂无 Rollout</div>
+                    </div>
+                `;
+            }
         }
 
         function scoreBarClass(score) {
@@ -2021,24 +2125,37 @@
                 .join('\n');
         }
 
-        const LIST_ITEM_RE = /^(\s*)([-*+])\s+(.+)$/;
+        const UL_ITEM_RE = /^(\s*)([-*+])\s+(.+)$/;
+        const OL_ITEM_RE = /^(\s*)(\d+)\.\s+(.+)$/;
 
-        /** 将连续的无序列表行（- / * / +，支持两空格缩进嵌套）转为嵌套 &lt;ul&gt; */
+        /** 将连续的列表行（无序 -/*/+ 或有序 1. 2.，支持两空格缩进嵌套）转为嵌套 ul/ol */
         function convertMarkdownLists(text) {
             const lines = text.split(/\r?\n/);
             const out = [];
             let i = 0;
             while (i < lines.length) {
                 const line = lines[i];
-                if (LIST_ITEM_RE.test(line)) {
+                if (UL_ITEM_RE.test(line)) {
                     const block = [];
-                    while (i < lines.length && LIST_ITEM_RE.test(lines[i])) {
-                        const m = lines[i].match(LIST_ITEM_RE);
+                    while (i < lines.length && UL_ITEM_RE.test(lines[i])) {
+                        const m = lines[i].match(UL_ITEM_RE);
                         block.push({ indent: m[1].replace(/\t/g, '    ').length, raw: m[3] });
                         i++;
                     }
                     out.push('');
-                    out.push(listBlockToNestedUl(block));
+                    out.push(listBlockToNestedList(block, 'ul'));
+                    out.push('');
+                    continue;
+                }
+                if (OL_ITEM_RE.test(line)) {
+                    const block = [];
+                    while (i < lines.length && OL_ITEM_RE.test(lines[i])) {
+                        const m = lines[i].match(OL_ITEM_RE);
+                        block.push({ indent: m[1].replace(/\t/g, '    ').length, raw: m[3] });
+                        i++;
+                    }
+                    out.push('');
+                    out.push(listBlockToNestedList(block, 'ol'));
                     out.push('');
                     continue;
                 }
@@ -2048,19 +2165,24 @@
             return out.join('\n');
         }
 
-        function listBlockToNestedUl(block) {
-            if (!block.length) return '';
+        function listBlockToNestedList(block, listTag) {
+            if (!block.length) {
+                return '';
+            }
             const base = Math.min(...block.map((b) => b.indent));
             const items = block.map((b) => ({
                 level: Math.max(0, Math.floor((b.indent - base) / 2)),
                 content: b.raw,
             }));
+            const tag = listTag === 'ol' ? 'ol' : 'ul';
 
             function walk(from, minLevel) {
-                let h = '<ul>';
+                let h = '<' + tag + '>';
                 let idx = from;
                 while (idx < items.length && items[idx].level >= minLevel) {
-                    if (items[idx].level !== minLevel) break;
+                    if (items[idx].level !== minLevel) {
+                        break;
+                    }
                     const c = items[idx].content;
                     idx++;
                     let inner = '';
@@ -2069,19 +2191,43 @@
                         inner = sub.out;
                         idx = sub.nextIdx;
                     }
-                    h += `<li>${c}${inner}</li>`;
+                    h += '<li>' + c + inner + '</li>';
                 }
-                h += '</ul>';
+                h += '</' + tag + '>';
                 return { out: h, nextIdx: idx };
             }
             return walk(0, 0).out;
         }
 
-        // 简单的markdown渲染器
+        /** 本地查看器：去掉明显危险属性，保留 div/img/a 等展示用 HTML */
+        function sanitizeEmbeddedHtml(fragment) {
+            let s = fragment;
+            s = s.replace(/<\/script/gi, '');
+            s = s.replace(/<script\b[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            s = s.replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+            s = s.replace(/javascript:/gi, '');
+            return s;
+        }
+
+        /** 将助手回复中的整块 &lt;div&gt;...&lt;/div&gt; 抽出，避免被 escapeHtml 转义 */
+        function extractRawHtmlPlaceholders(text) {
+            const blocks = [];
+            const re = /<div\b[^>]*>[\s\S]*?<\/div>/gi;
+            const cleaned = text.replace(re, (full) => {
+                const idx = blocks.length;
+                blocks.push(sanitizeEmbeddedHtml(full));
+                return '\n\nRAW_HTML_BLOCK_' + idx + '_END\n\n';
+            });
+            return { text: cleaned, blocks };
+        }
+
+        // 简单的markdown渲染器（含有序列表、脚注引用、内嵌 div HTML）
         function simpleMarkdown(text) {
-            const piped = extractPipeTables(text);
+            const extracted = extractRawHtmlPlaceholders(text);
+            const piped = extractPipeTables(extracted.text);
             const withPlaceholders = replaceHorizontalRules(piped.text);
             const tables = piped.tables;
+            const rawHtmlBlocks = extracted.blocks;
 
             let html = escapeHtml(withPlaceholders);
             for (let t = 0; t < tables.length; t++) {
@@ -2096,6 +2242,9 @@
 
             // 粗体
             html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+
+            // Markdown 脚注引用 [^1] → 上标样式
+            html = html.replace(/\[\^(\d+)\]/g, '<sup class="footnote-ref" style="font-size:0.75em;color:#6e6e73;">[$1]</sup>');
 
             // 标题（从多到少匹配，避免 #### 被当成 #）
             html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
@@ -2114,11 +2263,20 @@
 
             // 清理空段落
             html = html.replace(/<p><\/p>/g, '');
-            html = html.replace(/<p>\s*<(h[1-5]|ul|pre|table)/g, '<$1');
-            html = html.replace(/<\/(h[1-5]|ul|pre|table)>\s*<\/p>/g, '</$1>');
+            html = html.replace(/<p>\s*<(h[1-5]|ul|ol|pre|table)/g, '<$1');
+            html = html.replace(/<\/(h[1-5]|ul|ol|pre|table)>\s*<\/p>/g, '</$1>');
             html = html.replace(/<p>\s*<hr\s*>\s*<\/p>/gi, '<hr>');
             html = html.replace(/<p>\s*<hr\s*>/gi, '<hr>');
             html = html.replace(/<hr\s*>\s*<\/p>/gi, '<hr>');
+
+            // 占位符可能被包进 <p>，先剥离再注入真实 HTML
+            html = html.replace(/<p>\s*RAW_HTML_BLOCK_(\d+)_END\s*<\/p>/gi, 'RAW_HTML_BLOCK_$1_END');
+
+            for (let b = 0; b < rawHtmlBlocks.length; b++) {
+                const ph = 'RAW_HTML_BLOCK_' + b + '_END';
+                const wrapped = '<div class="embedded-html-block">' + rawHtmlBlocks[b] + '</div>';
+                html = html.split(ph).join(wrapped);
+            }
 
             return html;
         }
