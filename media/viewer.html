@@ -1212,6 +1212,37 @@
             return API_BASE + p + sep + 'token=' + encodeURIComponent(API_TOKEN);
         }
 
+        /** 避免网络/服务异常时 fetch 一直 pending，界面永久停在「正在加载 Step 列表」 */
+        async function fetchWithTimeout(url, init, timeoutMs) {
+            const ms = timeoutMs || 60000;
+            const ctrl = new AbortController();
+            const timer = setTimeout(function () {
+                ctrl.abort();
+            }, ms);
+            try {
+                return await fetch(url, Object.assign({}, init || {}, { signal: ctrl.signal }));
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function showContentError(title, detail) {
+            var el = document.getElementById('content');
+            if (!el) {
+                return;
+            }
+            el.innerHTML =
+                '<div class="empty-state">' +
+                '<div class="empty-state-icon">⚠️</div>' +
+                '<div class="empty-state-text">' +
+                escapeHtml(title) +
+                '</div>' +
+                '<div class="empty-state-subtext">' +
+                escapeHtml(detail) +
+                '</div>' +
+                '</div>';
+        }
+
         let stepsData = [];
         let currentStepIndex = -1;
         let rootFolder = '';
@@ -1224,14 +1255,27 @@
         /** 问句侧栏筛选：全部 | 仅方差≠0 | 仅方差=0 */
         let questionCategoryFilter = 'all';
 
-        window.addEventListener('DOMContentLoaded', () => {
-            void loadInitialSteps();
+        window.addEventListener('DOMContentLoaded', function () {
+            void loadInitialSteps().catch(function (err) {
+                var msg = err instanceof Error ? err.message : String(err);
+                showContentError('页面初始化失败', msg);
+            });
         });
 
         async function loadInitialSteps() {
             showLoading('正在加载 Step 列表…', '请稍候');
             try {
-                const r = await fetch(apiUrl('/api/steps'));
+                if (window.location.protocol === 'file:') {
+                    throw new Error(
+                        '当前是本地文件协议 (file://)，浏览器无法请求 /api/steps。请在编辑器中执行命令「Agent RL: Open Rollout Viewer」，使用扩展打开的 http://127.0.0.1:端口/?token=… 链接。'
+                    );
+                }
+                if (!API_TOKEN) {
+                    throw new Error(
+                        '缺少 token。请通过扩展生成的带 ?token= 的完整地址打开；不要单独双击打开 viewer.html。若已带 token 仍报错，请刷新页面。'
+                    );
+                }
+                const r = await fetchWithTimeout(apiUrl('/api/steps'), {}, 60000);
                 let data = null;
                 let bodyText = '';
                 try {
@@ -1265,13 +1309,12 @@
                 }
                 renderStepSelector();
             } catch (err) {
-                const msg = err instanceof Error ? err.message : String(err);
-                document.getElementById('content').innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">⚠️</div>
-                        <div class="empty-state-text">无法加载 Step 列表</div>
-                        <div class="empty-state-subtext">${escapeHtml(msg)}</div>
-                    </div>`;
+                var msg = err instanceof Error ? err.message : String(err);
+                if (err && err.name === 'AbortError') {
+                    msg =
+                        '请求超时（60 秒内未完成）。请确认本机扩展已启动查看服务、Rollout 根目录可访问，或 rollout 目录下文件过多导致扫描过慢。';
+                }
+                showContentError('无法加载 Step 列表', msg);
             }
         }
 
