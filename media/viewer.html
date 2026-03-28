@@ -97,6 +97,188 @@
             max-width: 100%;
         }
 
+        .btn-export-header {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #34c759 0%, #30b0c7 100%);
+            box-shadow: 0 2px 10px rgba(48, 176, 199, 0.35);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .btn-export-header:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(48, 176, 199, 0.45);
+        }
+
+        .btn-export-header:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .export-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .export-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(22, 22, 28, 0.48);
+            backdrop-filter: blur(10px);
+        }
+
+        .export-modal-panel {
+            position: relative;
+            width: 100%;
+            max-width: 460px;
+            max-height: calc(100vh - 40px);
+            overflow: auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 18px;
+            padding: 22px 24px 20px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .export-modal-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .export-modal-head h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1d1d1f;
+            letter-spacing: -0.4px;
+        }
+
+        .export-modal-close {
+            border: none;
+            background: rgba(0, 0, 0, 0.06);
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            color: #6e6e73;
+            flex-shrink: 0;
+        }
+
+        .export-modal-close:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #1d1d1f;
+        }
+
+        .export-modal-desc {
+            margin: 0 0 18px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #6e6e73;
+        }
+
+        .export-field {
+            margin-bottom: 14px;
+        }
+
+        .export-field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #424245;
+            margin-bottom: 6px;
+        }
+
+        .export-field select,
+        .export-field input[type='number'],
+        .export-field input[type='text'] {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(0, 0, 0, 0.08);
+            font-size: 14px;
+            background: #fff;
+            color: #1d1d1f;
+        }
+
+        .export-field select:focus,
+        .export-field input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .export-progress-wrap {
+            margin: 16px 0 8px;
+        }
+
+        .export-progress-bar {
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .export-progress-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.25s ease;
+        }
+
+        .export-progress-text {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6e6e73;
+        }
+
+        .export-error {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: rgba(255, 59, 48, 0.1);
+            color: #c41e16;
+            font-size: 13px;
+        }
+
+        .export-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .export-modal-actions .btn-secondary {
+            background: rgba(0, 0, 0, 0.06);
+            color: #1d1d1f;
+        }
+
+        .export-modal-actions .btn-secondary:hover:not(:disabled) {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
         .file-input-wrapper {
             position: relative;
             overflow: hidden;
@@ -1379,6 +1561,9 @@
                     <span class="step-info" id="stepInfo" style="display: none;"></span>
                 </div>
                 <div class="stats" id="stats"></div>
+                <button type="button" class="btn-export-header" id="btnOpenExport" style="display: none" onclick="openExportModal()">
+                    导出数据
+                </button>
             </div>
         </div>
 
@@ -1387,6 +1572,44 @@
                 <div class="loading-spinner"></div>
                 <div style="color: #1d1d1f; font-weight: 500;">正在加载 Step 列表…</div>
                 <div style="color:#86868b;font-size:14px;margin-top:10px;">请稍候</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exportModal" class="export-modal" style="display: none" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+        <div class="export-modal-backdrop" onclick="closeExportModal()"></div>
+        <div class="export-modal-panel" onclick="event.stopPropagation()">
+            <div class="export-modal-head">
+                <h2 id="exportModalTitle">导出 JSON 数据</h2>
+                <button type="button" class="export-modal-close" onclick="closeExportModal()" aria-label="关闭">×</button>
+            </div>
+            <p class="export-modal-desc">
+                在选定 Step 范围内筛选 <strong>score 低于阈值</strong> 的轨迹，按训练数据格式导出为 JSON 数组（含 nlu_markdown、user_content、local_time、history）。
+            </p>
+            <div class="export-field">
+                <label for="exportStepFrom">Step 起始</label>
+                <select id="exportStepFrom"></select>
+            </div>
+            <div class="export-field">
+                <label for="exportStepTo">Step 结束</label>
+                <select id="exportStepTo"></select>
+            </div>
+            <div class="export-field">
+                <label for="exportScoreThreshold">Score 阈值（仅导出 score 小于该值的轨迹）</label>
+                <input type="number" id="exportScoreThreshold" value="0.5" step="any" />
+            </div>
+            <div class="export-field">
+                <label for="exportFilename">文件名（可不含 .json，保存时再确认路径）</label>
+                <input type="text" id="exportFilename" placeholder="rollout_export" autocomplete="off" />
+            </div>
+            <div id="exportProgressWrap" class="export-progress-wrap" style="display: none">
+                <div class="export-progress-bar"><div id="exportProgressFill" class="export-progress-fill"></div></div>
+                <div id="exportProgressText" class="export-progress-text"></div>
+            </div>
+            <div id="exportError" class="export-error" style="display: none"></div>
+            <div class="export-modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeExportModal()" id="exportBtnCancel">取消</button>
+                <button type="button" class="btn btn-primary" onclick="runDataExport()" id="exportBtnStart">开始导出</button>
             </div>
         </div>
     </div>
@@ -1526,10 +1749,14 @@
             const selectorDiv = document.getElementById('stepSelector');
             const selectEl = document.getElementById('stepSelect');
             const infoEl = document.getElementById('stepInfo');
+            const exportBtn = document.getElementById('btnOpenExport');
 
             selectorDiv.style.display = 'flex';
             if (infoEl) {
                 infoEl.style.display = 'inline-block';
+            }
+            if (exportBtn) {
+                exportBtn.style.display = stepsData.length > 0 ? 'inline-flex' : 'none';
             }
 
             const totalFiles = stepsData.reduce(function (sum, s) {
@@ -1555,6 +1782,7 @@
                 : '共 ' + stepsData.length + ' 个Step, ' + totalFiles + ' 个文件 · 浏览器查看（127.0.0.1）';
 
             if (stepsData.length === 0) {
+                if (exportBtn) exportBtn.style.display = 'none';
                 document.getElementById('content').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📂</div>
@@ -1724,6 +1952,302 @@
             if (typeof r.score === 'number') return r.score;
             return r.reward?.score ?? 0;
         }
+
+        const NLU_OPEN = '<NLU(仅供参考)>';
+        const TIME_TAG = '<当前系统时间>';
+
+        function parseStepNum(stepName) {
+            const m = String(stepName).match(/step_(\d+)/i);
+            return m ? parseInt(m[1], 10) : NaN;
+        }
+
+        function sortStepsByNum(list) {
+            return [...list].sort((a, b) => parseStepNum(a.name) - parseStepNum(b.name));
+        }
+
+        function normalizeMsgContent(content) {
+            if (typeof content === 'string') return content;
+            if (Array.isArray(content)) {
+                return content
+                    .map(function (c) {
+                        return c && typeof c === 'object' && c.text != null ? c.text : JSON.stringify(c);
+                    })
+                    .join('\n');
+            }
+            return content == null ? '' : String(content);
+        }
+
+        function extractNluMarkdown(userRaw) {
+            if (!userRaw || typeof userRaw !== 'string') return '';
+            const a = userRaw.indexOf(NLU_OPEN);
+            const b = userRaw.indexOf(TIME_TAG);
+            if (a < 0 || b < 0 || b <= a) return '';
+            return userRaw.slice(a + NLU_OPEN.length, b).trim();
+        }
+
+        function extractLocalTimeFromUser(userRaw) {
+            if (!userRaw || typeof userRaw !== 'string') return '';
+            const i = userRaw.indexOf(TIME_TAG);
+            if (i < 0) return '';
+            return userRaw.slice(i + TIME_TAG.length).trim();
+        }
+
+        function findFirstLastUserIndex(messages) {
+            let first = -1;
+            let last = -1;
+            if (!messages || !messages.length) return { firstUserIdx: -1, lastUserIdx: -1 };
+            for (let i = 0; i < messages.length; i++) {
+                if (messages[i].role === 'user') {
+                    if (first < 0) first = i;
+                    last = i;
+                }
+            }
+            return { firstUserIdx: first, lastUserIdx: last };
+        }
+
+        function buildHistoryString(messages) {
+            const { firstUserIdx, lastUserIdx } = findFirstLastUserIndex(messages);
+            if (firstUserIdx < 0 || lastUserIdx <= firstUserIdx) return '';
+            const parts = [];
+            for (let i = firstUserIdx; i < lastUserIdx; i++) {
+                const msg = messages[i];
+                const text = normalizeMsgContent(msg.content).trim();
+                if (msg.role === 'user') parts.push('Human: ' + text);
+                else if (msg.role === 'assistant') parts.push('Assistant: ' + text);
+                else if (msg.role === 'tool') parts.push('Tool: ' + text);
+            }
+            return parts.join('\n');
+        }
+
+        function buildExportRecordFromRollout(rollout) {
+            const messages = rollout.messages || [];
+            const { lastUserIdx } = findFirstLastUserIndex(messages);
+            if (lastUserIdx < 0) {
+                return {
+                    nlu_markdown: '',
+                    user_content: '',
+                    local_time: '',
+                    history: ''
+                };
+            }
+            const lastUser = messages[lastUserIdx];
+            const raw = normalizeMsgContent(lastUser.content);
+            return {
+                nlu_markdown: extractNluMarkdown(raw),
+                user_content: extractQuestion(raw),
+                local_time: extractLocalTimeFromUser(raw),
+                history: buildHistoryString(messages)
+            };
+        }
+
+        let exportCancelled = false;
+
+        function updateExportProgress(pct, text) {
+            const fill = document.getElementById('exportProgressFill');
+            const txt = document.getElementById('exportProgressText');
+            if (fill) fill.style.width = Math.min(100, Math.max(0, pct)) + '%';
+            if (txt) txt.textContent = text || '';
+        }
+
+        function setExportBusy(busy) {
+            const startBtn = document.getElementById('exportBtnStart');
+            if (startBtn) startBtn.disabled = busy;
+        }
+
+        function fillExportStepSelect(sel, sortedSteps) {
+            sel.innerHTML = '';
+            sortedSteps.forEach(function (s) {
+                const o = document.createElement('option');
+                o.value = s.name;
+                o.textContent = s.name;
+                sel.appendChild(o);
+            });
+        }
+
+        function openExportModal() {
+            exportCancelled = false;
+            if (!stepsData || stepsData.length === 0) {
+                alert('暂无 Step 数据');
+                return;
+            }
+            const sorted = sortStepsByNum(stepsData);
+            fillExportStepSelect(document.getElementById('exportStepFrom'), sorted);
+            fillExportStepSelect(document.getElementById('exportStepTo'), sorted);
+            document.getElementById('exportStepFrom').value = sorted[0].name;
+            document.getElementById('exportStepTo').value = sorted[sorted.length - 1].name;
+            document.getElementById('exportError').style.display = 'none';
+            document.getElementById('exportError').textContent = '';
+            document.getElementById('exportProgressWrap').style.display = 'none';
+            updateExportProgress(0, '');
+            document.getElementById('exportModal').style.display = 'flex';
+        }
+
+        function closeExportModal() {
+            exportCancelled = true;
+            const m = document.getElementById('exportModal');
+            if (m) m.style.display = 'none';
+            const pw = document.getElementById('exportProgressWrap');
+            if (pw) pw.style.display = 'none';
+            setExportBusy(false);
+        }
+
+        async function saveExportJsonFile(baseName, jsonStr) {
+            let name = baseName.trim() || 'rollout_export';
+            if (!name.endsWith('.json')) name += '.json';
+            const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+            if (typeof window.showSaveFilePicker === 'function') {
+                try {
+                    const h = await window.showSaveFilePicker({
+                        suggestedName: name,
+                        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+                    });
+                    const w = await h.createWritable();
+                    await w.write(blob);
+                    await w.close();
+                    return true;
+                } catch (e) {
+                    if (e && e.name === 'AbortError') return false;
+                    throw e;
+                }
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(function () {
+                URL.revokeObjectURL(a.href);
+            }, 5000);
+            return true;
+        }
+
+        async function runDataExport() {
+            const errEl = document.getElementById('exportError');
+            errEl.style.display = 'none';
+            errEl.textContent = '';
+            const fromSel = document.getElementById('exportStepFrom');
+            const toSel = document.getElementById('exportStepTo');
+            const thresholdInp = document.getElementById('exportScoreThreshold');
+            const filenameInp = document.getElementById('exportFilename');
+            const nFrom = parseStepNum(fromSel.value);
+            const nTo = parseStepNum(toSel.value);
+            if (Number.isNaN(nFrom) || Number.isNaN(nTo)) {
+                errEl.textContent = '请选择有效的 Step 范围。';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (nFrom > nTo) {
+                errEl.textContent = '起始 Step 不能大于结束 Step。';
+                errEl.style.display = 'block';
+                return;
+            }
+            const threshold = parseFloat(String(thresholdInp.value).trim());
+            if (Number.isNaN(threshold)) {
+                errEl.textContent = '请输入有效的 score 阈值。';
+                errEl.style.display = 'block';
+                return;
+            }
+            exportCancelled = false;
+            setExportBusy(true);
+            document.getElementById('exportProgressWrap').style.display = 'block';
+            updateExportProgress(0, '准备中…');
+            try {
+                const sortedSteps = sortStepsByNum(stepsData);
+                const stepsInRange = sortedSteps.filter(function (s) {
+                    const n = parseStepNum(s.name);
+                    return n >= nFrom && n <= nTo;
+                });
+                if (stepsInRange.length === 0) {
+                    errEl.textContent = '所选范围内没有 Step。';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                const jobs = [];
+                for (let si = 0; si < stepsInRange.length; si++) {
+                    if (exportCancelled) throw new Error('已取消');
+                    const step = stepsInRange[si];
+                    const pctScan = Math.round(((si + 1) / stepsInRange.length) * 35);
+                    updateExportProgress(pctScan, '拉取摘要 ' + (si + 1) + '/' + stepsInRange.length + ' · ' + step.name);
+                    const res = await fetchWithTimeout(
+                        apiUrl('/api/summary?step=' + encodeURIComponent(step.name)),
+                        {},
+                        FETCH_TIMEOUT_SUMMARY_MS
+                    );
+                    if (!res.ok) throw new Error('摘要请求失败: ' + step.name + '（HTTP ' + res.status + '）');
+                    const data = await res.json();
+                    const summaries = data.summaries || [];
+                    for (let j = 0; j < summaries.length; j++) {
+                        if (exportCancelled) throw new Error('已取消');
+                        const s = summaries[j];
+                        if (rolloutScore(s) < threshold) {
+                            jobs.push({ step: step.name, file: s.file });
+                        }
+                    }
+                }
+                if (jobs.length === 0) {
+                    errEl.textContent = '没有 score 低于 ' + threshold + ' 的轨迹。';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                const out = [];
+                const CONC = 10;
+                let rollDone = 0;
+                for (let i = 0; i < jobs.length; i += CONC) {
+                    if (exportCancelled) throw new Error('已取消');
+                    const chunk = jobs.slice(i, i + CONC);
+                    const batch = await Promise.all(
+                        chunk.map(async function (job) {
+                            const res = await fetchWithTimeout(
+                                apiUrl(
+                                    '/api/rollout?step=' +
+                                        encodeURIComponent(job.step) +
+                                        '&file=' +
+                                        encodeURIComponent(job.file)
+                                ),
+                                {},
+                                FETCH_TIMEOUT_ROLLOUT_MS
+                            );
+                            if (!res.ok) throw new Error('轨迹加载失败: ' + job.file + '（HTTP ' + res.status + '）');
+                            return res.json();
+                        })
+                    );
+                    batch.forEach(function (full) {
+                        out.push(buildExportRecordFromRollout(full));
+                    });
+                    rollDone += chunk.length;
+                    const pctRoll = 35 + Math.round((rollDone / jobs.length) * 60);
+                    updateExportProgress(
+                        pctRoll,
+                        '拉取轨迹 ' + rollDone + '/' + jobs.length + '（将弹出保存对话框）…'
+                    );
+                }
+                updateExportProgress(98, '正在保存文件…');
+                const fn = filenameInp.value.trim() || 'rollout_export';
+                const jsonStr = JSON.stringify(out, null, 2);
+                const saved = await saveExportJsonFile(fn, jsonStr);
+                if (!saved) {
+                    errEl.textContent = '已取消保存，未写入文件。';
+                    errEl.style.display = 'block';
+                    return;
+                }
+                updateExportProgress(100, '完成');
+                document.getElementById('exportModal').style.display = 'none';
+                document.getElementById('exportProgressWrap').style.display = 'none';
+            } catch (e) {
+                const msg = e && e.message ? e.message : String(e);
+                errEl.textContent = msg === '已取消' ? '已取消导出。' : msg;
+                errEl.style.display = 'block';
+            } finally {
+                setExportBusy(false);
+            }
+        }
+
+        document.addEventListener('keydown', function (e) {
+            const m = document.getElementById('exportModal');
+            if (!m || m.style.display !== 'flex') return;
+            if (e.key === 'Escape') closeExportModal();
+        });
 
         /** 摘要行或本地完整对象（可有 _full） - 已优化性能并增加方差计算 */
         function clusterFromSummaries(items) {
@@ -2631,6 +3155,8 @@
         const UL_ITEM_RE = /^(\s*)([-*+])\s+(.+)$/;
         const OL_ITEM_RE = /^(\s*)(\d+)\.\s+(.+)$/;
         const LIST_CONTINUATION_RE = /^(\t| {2,})\S/;
+        /** 有序列表项下常见的子要点「 - xxx」仅一个前导空格，需并入同一条 li，否则会插入 ul 把 2. 拆成新 ol 导致序号全显示为 1 */
+        const LIST_SUB_BULLET_RE = /^\s+[-*+]\s+\S/;
 
         /**
          * 收集列表项并把「下一行缩进段落 / 中间空行」并入当前 li，避免每个 1. 2. 被拆成多个单条 ol 而都显示成 1.
@@ -2666,7 +3192,7 @@
                         i++;
                         continue;
                     }
-                    if (LIST_CONTINUATION_RE.test(L2)) {
+                    if (LIST_CONTINUATION_RE.test(L2) || LIST_SUB_BULLET_RE.test(L2)) {
                         itemRaw += '\n' + L2.trim();
                         i++;
                         continue;
