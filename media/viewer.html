@@ -1704,7 +1704,7 @@
                 <button type="button" class="export-modal-close" onclick="closeExportModal()" aria-label="关闭">×</button>
             </div>
             <p class="export-modal-desc">
-                在选定 Step 范围内筛选 <strong>score 低于阈值</strong> 的轨迹，按训练数据格式导出为 JSON 数组（含 nlu_markdown、user_content、local_time、history）。
+                与左侧问句列表一致：先按<strong>问句</strong>聚类，用每条问句的<strong>平均分</strong>与阈值比较；每个问句只取<strong>一条</strong>代表轨迹拉取全文，且跨 Step 对相同问句<strong>全局去重</strong>，避免重复 JSON。
             </p>
             <div class="export-field">
                 <label for="exportStepFrom">Step 起始</label>
@@ -1715,7 +1715,7 @@
                 <select id="exportStepTo"></select>
             </div>
             <div class="export-field">
-                <label for="exportScoreThreshold">Score 阈值（仅导出 score 小于该值的轨迹）</label>
+                <label for="exportScoreThreshold">阈值（问句平均分低于该值才导出，与列表中「平均」一致）</label>
                 <input type="number" id="exportScoreThreshold" value="0.5" step="any" />
             </div>
             <div class="export-field">
@@ -2221,13 +2221,18 @@
             if (el) el.innerHTML = html;
         }
 
-        function appendExportStepLogRow(stepName, matchedThisStep, cumulative) {
+        function appendExportStepLogRow(stepName, questionsThisStep, globalUniqueQuestions) {
             const log = document.getElementById('exportStepLog');
             if (!log) return;
             const row = document.createElement('div');
             row.className = 'export-step-log-row';
             row.textContent =
-                stepName + ' · 本 Step 命中 ' + matchedThisStep + ' 条 · 累计 ' + cumulative + ' 条';
+                stepName +
+                ' · 本 Step 符合条件问句 ' +
+                questionsThisStep +
+                ' 个 · 全局去重问句 ' +
+                globalUniqueQuestions +
+                ' 个';
             log.appendChild(row);
             log.scrollTop = log.scrollHeight;
         }
@@ -2393,16 +2398,16 @@
                     : '正在扫描摘要（完成后将下载到浏览器默认目录）…'
             );
             setExportLivePhase(
-                '<strong>阶段 1/2</strong> · 扫描各 Step 摘要并统计低于阈值 <strong>' +
+                '<strong>阶段 1/2</strong> · 按问句聚类，筛「平均分 &lt; ' +
                     threshold +
-                    '</strong> 的轨迹'
+                    '」的问句，并全局去重（与左侧列表「平均」一致）'
             );
-            setExportLiveHit('<strong>筛选命中累计：</strong>0 条');
-            setExportLiveFetch('<strong>已拉取 JSON 全文：</strong>—');
+            setExportLiveHit('<strong>全局去重问句：</strong>0 个');
+            setExportLiveFetch('<strong>已拉取代表轨迹 JSON：</strong>—');
 
             try {
-                const jobs = [];
-                let totalMatched = 0;
+                /** @type {Map<string, { step: string, file: string, avgScore: number, stepIndex: number }>} */
+                const questionBest = new Map();
                 for (let si = 0; si < stepsInRange.length; si++) {
                     if (exportCancelled) throw new Error('已取消');
                     const step = stepsInRange[si];
@@ -2412,12 +2417,12 @@
                     );
                     updateExportProgress(
                         pctScan,
-                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' · ' + step.name + ' · 当前累计命中 ' + totalMatched + ' 条'
+                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' · ' + step.name + ' · 去重问句 ' + questionBest.size + ' 个'
                     );
                     setExportLiveHit(
-                        '<strong>筛选命中累计：</strong>' +
-                            totalMatched +
-                            ' 条 · <strong>当前 Step：</strong>' +
+                        '<strong>全局去重问句：</strong>' +
+                            questionBest.size +
+                            ' 个 · <strong>当前 Step：</strong>' +
                             step.name
                     );
                     const res = await fetchWithTimeout(
@@ -2428,41 +2433,58 @@
                     if (!res.ok) throw new Error('摘要请求失败: ' + step.name + '（HTTP ' + res.status + '）');
                     const data = await res.json();
                     const summaries = data.summaries || [];
-                    let matchedThisStep = 0;
-                    for (let j = 0; j < summaries.length; j++) {
+                    const clusters = buildQuestionClustersFromSummaries(summaries);
+                    let questionsPassingThisStep = 0;
+                    for (let ci = 0; ci < clusters.length; ci++) {
                         if (exportCancelled) throw new Error('已取消');
-                        const s = summaries[j];
-                        if (rolloutScore(s) < threshold) {
-                            jobs.push({ step: step.name, file: s.file });
-                            matchedThisStep++;
-                            totalMatched++;
-                            setExportLiveHit(
-                                '<strong>筛选命中累计：</strong>' +
-                                    totalMatched +
-                                    ' 条 · <strong>当前 Step：</strong>' +
-                                    step.name +
-                                    '（本 Step +' +
-                                    matchedThisStep +
-                                    '）'
-                            );
+                        const cl = clusters[ci];
+                        if (cl.avgScore >= threshold) continue;
+                        questionsPassingThisStep++;
+                        const rep = cl.rollouts[0];
+                        if (!rep || !rep.file) continue;
+                        const key = cl.content;
+                        const prev = questionBest.get(key);
+                        if (
+                            !prev ||
+                            cl.avgScore < prev.avgScore - 1e-9 ||
+                            (Math.abs(cl.avgScore - prev.avgScore) < 1e-9 && si < prev.stepIndex)
+                        ) {
+                            questionBest.set(key, {
+                                step: step.name,
+                                file: rep.file,
+                                avgScore: cl.avgScore,
+                                stepIndex: si
+                            });
                         }
                     }
-                    appendExportStepLogRow(step.name, matchedThisStep, totalMatched);
+                    setExportLiveHit(
+                        '<strong>全局去重问句：</strong>' +
+                            questionBest.size +
+                            ' 个 · <strong>当前 Step：</strong>' +
+                            step.name +
+                            '（本 Step 符合条件 ' +
+                            questionsPassingThisStep +
+                            ' 个问句）'
+                    );
+                    appendExportStepLogRow(step.name, questionsPassingThisStep, questionBest.size);
                     const pctAfterStep = Math.round(((si + 1) / stepsInRange.length) * 38);
                     updateExportProgress(
                         pctAfterStep,
-                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' 完成 · 累计命中 ' + totalMatched + ' 条'
+                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' 完成 · 去重问句 ' + questionBest.size + ' 个'
                     );
                 }
+                const jobs = Array.from(questionBest.values()).map(function (e) {
+                    return { step: e.step, file: e.file };
+                });
                 if (jobs.length === 0) {
-                    errEl.textContent = '没有 score 低于 ' + threshold + ' 的轨迹。';
+                    errEl.textContent = '没有平均分低于 ' + threshold + ' 的问句（请先确认左侧问句列表的「平均」与阈值）。';
                     errEl.style.display = 'block';
                     return;
                 }
                 setExportLivePhase(
-                    '<strong>阶段 2/2</strong> · 拉取完整 JSON（共 <strong>' + jobs.length + '</strong> 条）'
+                    '<strong>阶段 2/2</strong> · 每个问句 1 条代表轨迹，共 <strong>' + jobs.length + '</strong> 个 JSON'
                 );
-                setExportLiveFetch('<strong>已拉取 JSON 全文：</strong>0 / ' + jobs.length);
+                setExportLiveFetch('<strong>已拉取代表轨迹 JSON：</strong>0 / ' + jobs.length);
                 const out = [];
                 const CONC = 10;
                 let rollDone = 0;
@@ -2492,10 +2514,16 @@
                     const pctRoll = 38 + Math.round((rollDone / jobs.length) * 58);
                     updateExportProgress(
                         pctRoll,
-                        '拉取轨迹 JSON ' + rollDone + '/' + jobs.length + ' · 数组长度 ' + out.length
+                        '拉取代表轨迹 ' + rollDone + '/' + jobs.length + ' · 导出条数 ' + out.length
                     );
                     setExportLiveFetch(
-                        '<strong>已拉取 JSON 全文：</strong>' + rollDone + ' / ' + jobs.length + '（导出数组 ' + out.length + ' 条）'
+                        '<strong>已拉取代表轨迹 JSON：</strong>' +
+                            rollDone +
+                            ' / ' +
+                            jobs.length +
+                            '（与去重问句数一致 ' +
+                            out.length +
+                            '）'
                     );
                 }
                 updateExportProgress(96, '正在写入文件…');
@@ -2506,7 +2534,7 @@
                 } else {
                     downloadExportJsonFile(fn, jsonStr);
                 }
-                updateExportProgress(100, '完成 · 共导出 ' + out.length + ' 条');
+                updateExportProgress(100, '完成 · 共导出 ' + out.length + ' 条（去重问句）');
                 document.getElementById('exportModal').style.display = 'none';
                 document.getElementById('exportProgressWrap').style.display = 'none';
                 resetExportLivePanel();
@@ -2526,35 +2554,45 @@
             if (e.key === 'Escape') closeExportModal();
         });
 
-        /** 摘要行或本地完整对象（可有 _full） - 已优化性能并增加方差计算 */
-        function clusterFromSummaries(items) {
-            const clusters = new Map();
-
-            items.forEach(item => {
+        /**
+         * 与左侧问句列表同源：按 question 聚类，计算平均分 / 方差等（不写入 clusteredData）。
+         * 导出时复用此逻辑，按 avgScore 筛选且每问句只取一条代表 rollout。
+         */
+        function buildQuestionClustersFromSummaries(items) {
+            const groups = new Map();
+            items.forEach(function (item) {
                 const q = item.question || '未找到user内容';
-                if (!clusters.has(q)) {
-                    clusters.set(q, []);
-                }
-                clusters.get(q).push(item);
+                if (!groups.has(q)) groups.set(q, []);
+                groups.get(q).push(item);
             });
-
-            clusteredData = Array.from(clusters.entries()).map(([content, rollouts]) => {
-                const sortedRollouts = rollouts.sort((a, b) => rolloutScore(b) - rolloutScore(a));
-                const scores = sortedRollouts.map(r => rolloutScore(r));
-                const avgScore = scores.length ? scores.reduce((sum, s) => sum + s, 0) / scores.length : 0;
+            return Array.from(groups.entries()).map(function (entry) {
+                const content = entry[0];
+                const rollouts = entry[1];
+                const sortedRollouts = rollouts.slice().sort(function (a, b) {
+                    return rolloutScore(b) - rolloutScore(a);
+                });
+                const scores = sortedRollouts.map(function (r) {
+                    return rolloutScore(r);
+                });
+                const avgScore = scores.length ? scores.reduce(function (sum, s) {
+                    return sum + s;
+                }, 0) / scores.length : 0;
                 const firstS = scores.length ? scores[0] : 0;
                 const allEqual =
                     scores.length <= 1 ||
-                    scores.every(s => Math.abs(s - firstS) < 1e-9);
-
+                    scores.every(function (s) {
+                        return Math.abs(s - firstS) < 1e-9;
+                    });
                 let variance = 0;
                 if (scores.length > 1 && !allEqual) {
                     const mean = avgScore;
-                    variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length;
+                    variance =
+                        scores.reduce(function (sum, s) {
+                            return sum + Math.pow(s - mean, 2);
+                        }, 0) / scores.length;
                 }
-
                 return {
-                    content,
+                    content: content,
                     rollouts: sortedRollouts,
                     count: sortedRollouts.length,
                     avgScore: parseFloat(avgScore.toFixed(4)),
@@ -2562,14 +2600,20 @@
                     isConstant: allEqual
                 };
             });
+        }
 
-            // 先展示「方差≠0」问句（分数有变化），再展示「方差=0」；组内按平均分降序
-            clusteredData.sort((a, b) => {
+        function sortQuestionClustersForDisplay(clusters) {
+            return clusters.slice().sort(function (a, b) {
                 if (a.isConstant !== b.isConstant) {
                     return a.isConstant ? 1 : -1;
                 }
                 return b.avgScore - a.avgScore;
             });
+        }
+
+        /** 摘要行或本地完整对象（可有 _full） - 已优化性能并增加方差计算 */
+        function clusterFromSummaries(items) {
+            clusteredData = sortQuestionClustersForDisplay(buildQuestionClustersFromSummaries(items));
         }
 
         function clusterData(rollouts) {

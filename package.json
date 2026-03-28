@@ -2,7 +2,7 @@
   "name": "agent-rl-rollout-viewer",
   "displayName": "Agent RL Rollout Viewer",
   "description": "可视化查看Agent RL训练的rollout轨迹数据，支持多step文件夹浏览和分析",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "publisher": "niudonglei",
   "license": "MIT",
   "engines": {
