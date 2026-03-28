@@ -2411,13 +2411,20 @@
                 for (let si = 0; si < stepsInRange.length; si++) {
                     if (exportCancelled) throw new Error('已取消');
                     const step = stepsInRange[si];
-                    const pctScan = Math.max(
-                        1,
-                        Math.round(((si + 0.35) / stepsInRange.length) * 38)
+                    const pctStepOnly = Math.round(
+                        ((si + 1) / stepsInRange.length) * 100
                     );
                     updateExportProgress(
-                        pctScan,
-                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' · ' + step.name + ' · 去重问句 ' + questionBest.size + ' 个'
+                        Math.max(1, pctStepOnly),
+                        '摘要 ' +
+                            (si + 1) +
+                            '/' +
+                            stepsInRange.length +
+                            ' · ' +
+                            step.name +
+                            ' · 去重问句 ' +
+                            questionBest.size +
+                            ' 个'
                     );
                     setExportLiveHit(
                         '<strong>全局去重问句：</strong>' +
@@ -2433,26 +2440,25 @@
                     if (!res.ok) throw new Error('摘要请求失败: ' + step.name + '（HTTP ' + res.status + '）');
                     const data = await res.json();
                     const summaries = data.summaries || [];
-                    const clusters = buildQuestionClustersFromSummaries(summaries);
+                    const aggregates = await aggregateSummariesForExportAsync(summaries);
                     let questionsPassingThisStep = 0;
-                    for (let ci = 0; ci < clusters.length; ci++) {
+                    for (let ci = 0; ci < aggregates.length; ci++) {
                         if (exportCancelled) throw new Error('已取消');
-                        const cl = clusters[ci];
-                        if (cl.avgScore >= threshold) continue;
+                        const row = aggregates[ci];
+                        if (row.avgScore >= threshold) continue;
                         questionsPassingThisStep++;
-                        const rep = cl.rollouts[0];
-                        if (!rep || !rep.file) continue;
-                        const key = cl.content;
+                        if (!row.repFile) continue;
+                        const key = row.content;
                         const prev = questionBest.get(key);
                         if (
                             !prev ||
-                            cl.avgScore < prev.avgScore - 1e-9 ||
-                            (Math.abs(cl.avgScore - prev.avgScore) < 1e-9 && si < prev.stepIndex)
+                            row.avgScore < prev.avgScore - 1e-9 ||
+                            (Math.abs(row.avgScore - prev.avgScore) < 1e-9 && si < prev.stepIndex)
                         ) {
                             questionBest.set(key, {
                                 step: step.name,
-                                file: rep.file,
-                                avgScore: cl.avgScore,
+                                file: row.repFile,
+                                avgScore: row.avgScore,
                                 stepIndex: si
                             });
                         }
@@ -2467,10 +2473,18 @@
                             ' 个问句）'
                     );
                     appendExportStepLogRow(step.name, questionsPassingThisStep, questionBest.size);
-                    const pctAfterStep = Math.round(((si + 1) / stepsInRange.length) * 38);
+                    const pctAfterStep = Math.round(
+                        ((si + 1) / stepsInRange.length) * 100
+                    );
                     updateExportProgress(
                         pctAfterStep,
-                        '摘要 ' + (si + 1) + '/' + stepsInRange.length + ' 完成 · 去重问句 ' + questionBest.size + ' 个'
+                        '摘要 ' +
+                            (si + 1) +
+                            '/' +
+                            stepsInRange.length +
+                            ' 完成 · 去重问句 ' +
+                            questionBest.size +
+                            ' 个'
                     );
                 }
                 const jobs = Array.from(questionBest.values()).map(function (e) {
@@ -2486,8 +2500,12 @@
                 );
                 setExportLiveFetch('<strong>已拉取代表轨迹 JSON：</strong>0 / ' + jobs.length);
                 const out = [];
-                const CONC = 10;
+                const CONC = 16;
                 let rollDone = 0;
+                updateExportProgress(
+                    0,
+                    '阶段 2/2：拉取完整 JSON（数据量大时较慢）· 进度条表示本阶段 已拉取/总数'
+                );
                 for (let i = 0; i < jobs.length; i += CONC) {
                     if (exportCancelled) throw new Error('已取消');
                     const chunk = jobs.slice(i, i + CONC);
@@ -2511,10 +2529,15 @@
                         out.push(buildExportRecordFromRollout(full));
                     });
                     rollDone += chunk.length;
-                    const pctRoll = 38 + Math.round((rollDone / jobs.length) * 58);
+                    const pctRoll = Math.round((rollDone / jobs.length) * 100);
                     updateExportProgress(
                         pctRoll,
-                        '拉取代表轨迹 ' + rollDone + '/' + jobs.length + ' · 导出条数 ' + out.length
+                        '拉取代表轨迹 ' +
+                            rollDone +
+                            '/' +
+                            jobs.length +
+                            ' · 导出条数 ' +
+                            out.length
                     );
                     setExportLiveFetch(
                         '<strong>已拉取代表轨迹 JSON：</strong>' +
@@ -2553,6 +2576,60 @@
             if (!m || m.style.display !== 'flex') return;
             if (e.key === 'Escape') closeExportModal();
         });
+
+        /**
+         * 导出专用：单次遍历聚合问句（平均分 + 组内最高分对应 file），避免排序/方差；大数据量时分片让出主线程。
+         */
+        async function aggregateSummariesForExportAsync(items) {
+            const groups = new Map();
+            const n = items.length;
+            const YIELD_EVERY = 3500;
+            for (let i = 0; i < n; i++) {
+                const item = items[i];
+                const q = item.question || '未找到user内容';
+                const sc = rolloutScore(item);
+                const f = item.file;
+                const g = groups.get(q);
+                if (!g) {
+                    groups.set(q, { sum: sc, count: 1, bestFile: f, bestScore: sc });
+                } else {
+                    g.sum += sc;
+                    g.count++;
+                    if (sc > g.bestScore) {
+                        g.bestScore = sc;
+                        g.bestFile = f;
+                    }
+                }
+                if (n > YIELD_EVERY && i > 0 && i % YIELD_EVERY === 0) {
+                    await yieldExportToBrowser();
+                }
+            }
+            const out = [];
+            groups.forEach(function (g, content) {
+                const avgRaw = g.count ? g.sum / g.count : 0;
+                out.push({
+                    content: content,
+                    avgScore: parseFloat(avgRaw.toFixed(4)),
+                    repFile: g.bestFile
+                });
+            });
+            return out;
+        }
+
+        /**
+         * 超大摘要时让出主线程，避免长时间脚本阻塞进度条与「卡顿感」。
+         */
+        async function yieldExportToBrowser() {
+            await new Promise(function (resolve) {
+                if (typeof requestAnimationFrame === 'function') {
+                    requestAnimationFrame(function () {
+                        resolve();
+                    });
+                } else {
+                    setTimeout(resolve, 0);
+                }
+            });
+        }
 
         /**
          * 与左侧问句列表同源：按 question 聚类，计算平均分 / 方差等（不写入 clusteredData）。
