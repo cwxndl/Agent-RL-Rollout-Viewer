@@ -1063,6 +1063,30 @@
             border-left: 4px solid #2196F3;
         }
 
+        .message-user-current {
+            border: 2px solid #1565c0;
+            box-shadow:
+                0 0 0 4px rgba(21, 101, 192, 0.2),
+                0 10px 32px rgba(33, 150, 243, 0.22);
+            background: linear-gradient(135deg, rgba(187, 222, 251, 0.95) 0%, rgba(227, 242, 253, 0.98) 100%);
+        }
+
+        .message-user-current .message-header {
+            background: linear-gradient(135deg, rgba(227, 242, 253, 1) 0%, rgba(187, 222, 251, 0.92) 100%);
+        }
+
+        .current-turn-badge {
+            margin-left: 8px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            background: #1565c0;
+            color: #fff;
+            letter-spacing: 0.4px;
+            text-transform: none;
+        }
+
         .message-assistant {
             background: linear-gradient(135deg, rgba(243, 229, 245, 0.8) 0%, rgba(233, 209, 245, 0.8) 100%);
             border-left: 4px solid #9c27b0;
@@ -1182,6 +1206,122 @@
         .msg-part-unknown {
             opacity: 0.85;
             font-size: 12px;
+        }
+
+        .code-interpreter-card {
+            margin: 16px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.38);
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.75);
+        }
+
+        .code-interpreter-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 14px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.14), rgba(118, 75, 162, 0.12));
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .code-interpreter-badge {
+            font-size: 11px;
+            font-weight: 800;
+            color: #5c6bc0;
+            text-transform: uppercase;
+            letter-spacing: 0.55px;
+        }
+
+        .btn-tool-raw-toggle,
+        .btn-tool-raw-copy {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(102, 126, 234, 0.45);
+            background: #fff;
+            cursor: pointer;
+            color: #3949ab;
+            font-weight: 600;
+            transition:
+                background 0.15s ease,
+                transform 0.12s ease;
+        }
+
+        .btn-tool-raw-toggle:hover,
+        .btn-tool-raw-copy:hover {
+            background: rgba(102, 126, 234, 0.08);
+        }
+
+        .btn-tool-raw-toggle:active,
+        .btn-tool-raw-copy:active {
+            transform: scale(0.98);
+        }
+
+        .code-interpreter-pre {
+            margin: 0;
+            padding: 16px;
+            overflow-x: auto;
+            background: #1e1e2e;
+            color: #e0e0e0;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .code-interpreter-pre code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .py-kw {
+            color: #c792ea;
+            font-weight: 600;
+        }
+
+        .py-str {
+            color: #c3e88d;
+        }
+
+        .py-num {
+            color: #f78c6c;
+        }
+
+        .py-comment {
+            color: #546e7a;
+            font-style: italic;
+        }
+
+        .code-interpreter-raw {
+            margin: 0;
+            padding: 12px 14px;
+            background: rgba(0, 0, 0, 0.04);
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 280px;
+            overflow: auto;
+            border-top: 1px dashed rgba(0, 0, 0, 0.12);
+        }
+
+        .tool-call-parse-err {
+            margin: 12px 0;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255, 59, 48, 0.08);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            font-size: 12px;
+        }
+
+        .tool-call-generic {
+            margin: 12px 0;
+            padding: 14px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            font-size: 12px;
+            max-height: 320px;
+            overflow: auto;
         }
 
         /* Markdown样式 - 苹果风格 */
@@ -2127,6 +2267,106 @@
             return '';
         }
 
+        let toolCallRawStore = {};
+        let toolCallRawSeq = 0;
+
+        function beginMessageRender() {
+            toolCallRawStore = {};
+            toolCallRawSeq = 0;
+        }
+
+        function registerToolCallRaw(s) {
+            const id = ++toolCallRawSeq;
+            toolCallRawStore[String(id)] = s;
+            return id;
+        }
+
+        function highlightPythonLite(code) {
+            const kw =
+                '\\b(?:def|class|import|from|return|if|else|elif|for|while|try|except|finally|with|as|True|False|None|and|or|not|in|is|lambda|yield|async|await|pass|break|continue|global|nonlocal|assert|raise|del)\\b';
+            let s = escapeHtml(code);
+            s = s.replace(
+                /\b0x[0-9a-fA-F]+\b|\b\d+\.?\d*(?:[eE][+-]?\d+)?\b/g,
+                '<span class="py-num">$&</span>'
+            );
+            return s.replace(new RegExp(kw, 'g'), '<span class="py-kw">$&</span>');
+        }
+
+        function renderCodeInterpreterToolCallBlock(innerJsonStr) {
+            let obj;
+            try {
+                obj = JSON.parse(innerJsonStr);
+            } catch (e) {
+                return (
+                    '<pre class="tool-call-parse-err">' + escapeHtml(innerJsonStr) + '</pre>'
+                );
+            }
+            if (
+                obj &&
+                obj.name === 'CodeInterpreter' &&
+                obj.arguments &&
+                typeof obj.arguments.code === 'string'
+            ) {
+                const rawFull = innerJsonStr;
+                const id = registerToolCallRaw(rawFull);
+                const hl = highlightPythonLite(obj.arguments.code);
+                return (
+                    '<div class="code-interpreter-card">' +
+                    '<div class="code-interpreter-toolbar">' +
+                    '<span class="code-interpreter-badge">CodeInterpreter</span>' +
+                    '<button type="button" class="btn-tool-raw-toggle" data-tool-raw-id="' +
+                    id +
+                    '">查看原始 JSON</button>' +
+                    '<button type="button" class="btn-tool-raw-copy" data-tool-raw-id="' +
+                    id +
+                    '">复制原始输入</button>' +
+                    '</div>' +
+                    '<pre class="code-interpreter-pre"><code>' +
+                    hl +
+                    '</code></pre>' +
+                    '<pre class="code-interpreter-raw" id="tool-raw-' +
+                    id +
+                    '" hidden>' +
+                    escapeHtml(rawFull) +
+                    '</pre>' +
+                    '</div>'
+                );
+            }
+            return (
+                '<pre class="tool-call-generic">' +
+                escapeHtml(JSON.stringify(obj, null, 2)) +
+                '</pre>'
+            );
+        }
+
+        function renderSegmentWithToolCalls(text) {
+            if (text == null || text === '') {
+                return '';
+            }
+            const re = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
+            let out = '';
+            let last = 0;
+            let m;
+            while ((m = re.exec(text)) !== null) {
+                if (m.index > last) {
+                    out +=
+                        '<div class="markdown-content">' +
+                        simpleMarkdown(text.slice(last, m.index)) +
+                        '</div>';
+                }
+                out += renderCodeInterpreterToolCallBlock(m[1].trim());
+                last = re.lastIndex;
+            }
+            if (last < text.length) {
+                out +=
+                    '<div class="markdown-content">' + simpleMarkdown(text.slice(last)) + '</div>';
+            }
+            if (!out) {
+                out = '<div class="markdown-content">' + simpleMarkdown(text) + '</div>';
+            }
+            return out;
+        }
+
         function renderRolloutImageHtml(part) {
             const src = resolveRolloutImageSrc(part.image_url != null ? part.image_url : part);
             if (!src) {
@@ -2141,7 +2381,8 @@
             );
         }
 
-        function renderContentPartsArray(parts) {
+        function renderContentPartsArray(parts, messageRole) {
+            const role = messageRole || '';
             if (!Array.isArray(parts) || parts.length === 0) {
                 return '<pre>（空内容）</pre>';
             }
@@ -2153,9 +2394,15 @@
                     continue;
                 }
                 if (p.type === 'text' && p.text != null) {
-                    blocks.push(
-                        '<div class="msg-part-text"><pre>' + escapeHtml(String(p.text)) + '</pre></div>'
-                    );
+                    if (role === 'assistant') {
+                        blocks.push(
+                            '<div class="msg-part-text">' + renderSegmentWithToolCalls(String(p.text)) + '</div>'
+                        );
+                    } else {
+                        blocks.push(
+                            '<div class="msg-part-text"><pre>' + escapeHtml(String(p.text)) + '</pre></div>'
+                        );
+                    }
                 } else if (p.type === 'image_url') {
                     blocks.push(renderRolloutImageHtml(p));
                 } else {
@@ -3544,11 +3791,20 @@
         function renderMessages(messages) {
             if (!messages || messages.length === 0) return '<p>无消息数据</p>';
 
-            // 找到最后一个assistant的索引
+            beginMessageRender();
+
             let lastAssistantIndex = -1;
             for (let i = messages.length - 1; i >= 0; i--) {
                 if (messages[i].role === 'assistant') {
                     lastAssistantIndex = i;
+                    break;
+                }
+            }
+
+            let lastUserIndex = -1;
+            for (let j = messages.length - 1; j >= 0; j--) {
+                if (messages[j].role === 'user') {
+                    lastUserIndex = j;
                     break;
                 }
             }
@@ -3560,6 +3816,7 @@
                         const rawContent = msg.content;
                         const shouldCollapse = idx !== lastAssistantIndex;
                         const isLastAssistant = idx === lastAssistantIndex && msg.role === 'assistant';
+                        const isLastUser = idx === lastUserIndex && msg.role === 'user';
 
                         let bodyHtml = '';
                         if (Array.isArray(rawContent)) {
@@ -3571,28 +3828,37 @@
                                         escapeHtml(plain.substring(0, 500)) +
                                         '... (已截断)</pre>';
                                 } else {
-                                    bodyHtml = renderContentPartsArray(rawContent);
+                                    bodyHtml = renderContentPartsArray(rawContent, msg.role);
                                 }
                             } else if (isLastAssistant) {
                                 bodyHtml = renderAssistantPartsSequential(rawContent);
                             } else {
-                                bodyHtml = renderContentPartsArray(rawContent);
+                                bodyHtml = renderContentPartsArray(rawContent, msg.role);
                             }
                         } else {
                             let str = rawContent == null ? '' : String(rawContent);
                             if (msg.role === 'system' && str.length > 500) {
                                 str = str.substring(0, 500) + '... (已截断)';
                             }
-                            bodyHtml = isLastAssistant
-                                ? renderAssistantContent(str)
-                                : '<pre>' + escapeHtml(str) + '</pre>';
+                            if (msg.role === 'assistant') {
+                                bodyHtml = isLastAssistant
+                                    ? renderAssistantContent(str)
+                                    : renderSegmentWithToolCalls(str);
+                            } else {
+                                bodyHtml = isLastAssistant
+                                    ? renderAssistantContent(str)
+                                    : '<pre>' + escapeHtml(str) + '</pre>';
+                            }
                         }
 
+                        const extraClass = isLastUser ? ' message-user-current' : '';
+
                         return `
-                            <div class="message ${roleClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
+                            <div class="message ${roleClass}${extraClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
                                 <div class="message-header">
                                     <div class="message-header-left">
                                         <span>${msg.role} ${msg.generation_time ? `(生成: ${msg.generation_time.toFixed(2)}s)` : ''}</span>
+                                        ${isLastUser ? '<span class="current-turn-badge">当前问句</span>' : ''}
                                         <span class="message-index">#${idx + 1}</span>
                                     </div>
                                     <span class="collapse-icon">▼</span>
@@ -3619,16 +3885,13 @@
                     ${thinkContent ? `
                         <div class="think-section">
                             <div class="think-title">思维链</div>
-                            <div class="markdown-content">${simpleMarkdown(thinkContent)}</div>
+                            ${renderSegmentWithToolCalls(thinkContent)}
                         </div>
                     ` : ''}
-                    ${answerContent ? `
-                        <div class="markdown-content">${simpleMarkdown(answerContent)}</div>
-                    ` : ''}
+                    ${answerContent ? renderSegmentWithToolCalls(answerContent) : ''}
                 `;
             } else {
-                // 没有</think>标签，直接渲染markdown
-                return `<div class="markdown-content">${simpleMarkdown(str)}</div>`;
+                return renderSegmentWithToolCalls(str);
             }
         }
 
@@ -3997,6 +4260,38 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        document.addEventListener('click', function (e) {
+            const toggleBtn = e.target.closest('.btn-tool-raw-toggle');
+            if (toggleBtn) {
+                const id = toggleBtn.getAttribute('data-tool-raw-id');
+                const pre = document.getElementById('tool-raw-' + id);
+                if (pre) {
+                    pre.hidden = !pre.hidden;
+                    toggleBtn.textContent = pre.hidden ? '查看原始 JSON' : '隐藏原始 JSON';
+                }
+                return;
+            }
+            const copyBtn = e.target.closest('.btn-tool-raw-copy');
+            if (copyBtn) {
+                const id = copyBtn.getAttribute('data-tool-raw-id');
+                const raw = toolCallRawStore[id];
+                if (raw != null && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(raw).then(
+                        function () {
+                            const o = copyBtn.textContent;
+                            copyBtn.textContent = '已复制';
+                            setTimeout(function () {
+                                copyBtn.textContent = o;
+                            }, 1500);
+                        },
+                        function () {
+                            alert('复制失败，请检查剪贴板权限。');
+                        }
+                    );
+                }
+            }
+        });
     </script>
 </body>
 </html>
