@@ -1210,10 +1210,25 @@
 
         .code-interpreter-card {
             margin: 16px 0;
-            border-radius: 12px;
-            border: 1px solid rgba(102, 126, 234, 0.38);
+            border-radius: 14px;
+            border: 1px solid rgba(167, 139, 250, 0.55);
             overflow: hidden;
-            background: rgba(255, 255, 255, 0.75);
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.97) 0%, rgba(245, 243, 255, 0.95) 100%);
+            box-shadow:
+                0 0 0 2px rgba(139, 92, 246, 0.2),
+                0 12px 40px rgba(99, 102, 241, 0.15);
+            position: relative;
+        }
+
+        .code-interpreter-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 5px;
+            background: linear-gradient(180deg, #a855f7 0%, #6366f1 50%, #22d3ee 100%);
+            border-radius: 14px 0 0 14px;
         }
 
         .code-interpreter-toolbar {
@@ -1221,17 +1236,29 @@
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
-            padding: 10px 14px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.14), rgba(118, 75, 162, 0.12));
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: 12px 16px 12px 20px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(99, 102, 241, 0.14) 50%, rgba(34, 211, 238, 0.1) 100%);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.22);
         }
 
         .code-interpreter-badge {
             font-size: 11px;
             font-weight: 800;
-            color: #5c6bc0;
+            color: #fff;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
-            letter-spacing: 0.55px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            box-shadow: 0 2px 10px rgba(99, 102, 241, 0.45);
+        }
+
+        .code-interpreter-tagline {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4c1d95;
+            flex: 1;
+            min-width: 140px;
         }
 
         .btn-tool-raw-toggle,
@@ -1259,12 +1286,54 @@
             transform: scale(0.98);
         }
 
+        /* 必须高于 .message-content pre，否则代码区会变成浅灰、字发虚 */
+        .message-content .code-interpreter-card pre.code-interpreter-pre {
+            margin: 0;
+            padding: 18px 18px 20px 22px;
+            overflow-x: auto;
+            background: #13141c;
+            background-image: none;
+            color: #e4e6ef;
+            font-size: 13px;
+            line-height: 1.62;
+            border: none;
+            border-radius: 0;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        .message-content .code-interpreter-card pre.code-interpreter-pre code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #e4e6ef;
+            background: transparent;
+        }
+
+        .message-content .code-interpreter-card .py-kw {
+            color: #ff7edb;
+            font-weight: 700;
+        }
+
+        .message-content .code-interpreter-card .py-str {
+            color: #b5f5a0;
+        }
+
+        .message-content .code-interpreter-card .py-num {
+            color: #ffc777;
+            font-weight: 700;
+        }
+
+        .message-content .code-interpreter-card .py-comment {
+            color: #7b8cae;
+            font-style: italic;
+        }
+
         .code-interpreter-pre {
             margin: 0;
             padding: 16px;
             overflow-x: auto;
-            background: #1e1e2e;
-            color: #e0e0e0;
+            background: #13141c;
+            color: #e4e6ef;
             font-size: 13px;
             line-height: 1.55;
         }
@@ -1276,20 +1345,21 @@
         }
 
         .py-kw {
-            color: #c792ea;
-            font-weight: 600;
+            color: #ff7edb;
+            font-weight: 700;
         }
 
         .py-str {
-            color: #c3e88d;
+            color: #b5f5a0;
         }
 
         .py-num {
-            color: #f78c6c;
+            color: #ffc777;
+            font-weight: 700;
         }
 
         .py-comment {
-            color: #546e7a;
+            color: #7b8cae;
             font-style: italic;
         }
 
@@ -2285,11 +2355,13 @@
             const kw =
                 '\\b(?:def|class|import|from|return|if|else|elif|for|while|try|except|finally|with|as|True|False|None|and|or|not|in|is|lambda|yield|async|await|pass|break|continue|global|nonlocal|assert|raise|del)\\b';
             let s = escapeHtml(code);
+            /* 必须先关键字再高亮数字：若先包 py-num，HTML 里会出现 class="py-num"，后续会把其中的 Python 关键字 class 再匹配，造成 paths[:class="py-num">20] 之类错乱 */
+            s = s.replace(new RegExp(kw, 'g'), '<span class="py-kw">$&</span>');
             s = s.replace(
                 /\b0x[0-9a-fA-F]+\b|\b\d+\.?\d*(?:[eE][+-]?\d+)?\b/g,
                 '<span class="py-num">$&</span>'
             );
-            return s.replace(new RegExp(kw, 'g'), '<span class="py-kw">$&</span>');
+            return s;
         }
 
         function renderCodeInterpreterToolCallBlock(innerJsonStr) {
@@ -2311,9 +2383,10 @@
                 const id = registerToolCallRaw(rawFull);
                 const hl = highlightPythonLite(obj.arguments.code);
                 return (
-                    '<div class="code-interpreter-card">' +
+                    '<div class="code-interpreter-card" data-code-interpreter="true">' +
                     '<div class="code-interpreter-toolbar">' +
-                    '<span class="code-interpreter-badge">CodeInterpreter</span>' +
+                    '<span class="code-interpreter-badge" title="模型通过 CodeInterpreter 工具提交的代码">CodeInterpreter</span>' +
+                    '<span class="code-interpreter-tagline">以下为该工具执行的 Python 代码（语法高亮）</span>' +
                     '<button type="button" class="btn-tool-raw-toggle" data-tool-raw-id="' +
                     id +
                     '">查看原始 JSON</button>' +
