@@ -1087,6 +1087,19 @@
             text-transform: none;
         }
 
+        .code-interpreter-call-badge {
+            margin-left: 8px;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+            color: #fff;
+            letter-spacing: 0.35px;
+            text-transform: none;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+        }
+
         .message-assistant {
             background: linear-gradient(135deg, rgba(243, 229, 245, 0.8) 0%, rgba(233, 209, 245, 0.8) 100%);
             border-left: 4px solid #9c27b0;
@@ -2389,10 +2402,10 @@
                     '<span class="code-interpreter-tagline">以下为该工具执行的 Python 代码（语法高亮）</span>' +
                     '<button type="button" class="btn-tool-raw-toggle" data-tool-raw-id="' +
                     id +
-                    '">查看原始 JSON</button>' +
+                    '">查看原始代码</button>' +
                     '<button type="button" class="btn-tool-raw-copy" data-tool-raw-id="' +
                     id +
-                    '">复制原始输入</button>' +
+                    '">复制原始代码</button>' +
                     '</div>' +
                     '<pre class="code-interpreter-pre"><code>' +
                     hl +
@@ -3707,6 +3720,16 @@
             return '{' + Object.keys(o).length + ' keys}';
         }
 
+        /** 折叠数组项时在摘要中带上 role（如 messages[i]），便于辨认 user/assistant/tool */
+        function jsonPreviewArrayItemSummary(item) {
+            let s = jsonPreviewObject(item);
+            if (item && typeof item === 'object' && !Array.isArray(item) && item.role != null) {
+                const r = typeof item.role === 'string' ? item.role : String(item.role);
+                s += ' · role: ' + r;
+            }
+            return s;
+        }
+
         function renderFoldableJsonValue(val, depth) {
             const maxOpenDepth = 1;
             if (val === null) {
@@ -3742,7 +3765,7 @@
                             '<details class="json-node"><summary class="json-summary"><span class="json-idx">[' +
                             i +
                             ']</span> ' +
-                            escapeHtml(jsonPreviewObject(item)) +
+                            escapeHtml(jsonPreviewArrayItemSummary(item)) +
                             '</summary><div class="json-children">' +
                             renderFoldableJsonValue(item, depth + 1) +
                             '</div></details>'
@@ -3848,6 +3871,46 @@
             }
         }
 
+        function assistantTextHasCodeInterpreterCall(text) {
+            if (text == null || text === '') return false;
+            const s = typeof text === 'string' ? text : String(text);
+            const re = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/gi;
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                try {
+                    const obj = JSON.parse(m[1].trim());
+                    if (
+                        obj &&
+                        obj.name === 'CodeInterpreter' &&
+                        obj.arguments &&
+                        typeof obj.arguments.code === 'string'
+                    ) {
+                        return true;
+                    }
+                } catch (e) {
+                    /* 非合法 JSON 的 tool_call 跳过 */
+                }
+            }
+            return false;
+        }
+
+        function messageHasCodeInterpreterCall(msg) {
+            if (!msg || msg.role !== 'assistant') return false;
+            const raw = msg.content;
+            if (typeof raw === 'string') {
+                return assistantTextHasCodeInterpreterCall(raw);
+            }
+            if (Array.isArray(raw)) {
+                for (let i = 0; i < raw.length; i++) {
+                    const p = raw[i];
+                    if (p && typeof p === 'object' && p.type === 'text' && p.text != null) {
+                        if (assistantTextHasCodeInterpreterCall(p.text)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         function renderRolloutDetail(rollout) {
             detailRolloutPayload = rollout;
             return `
@@ -3925,6 +3988,8 @@
                         }
 
                         const extraClass = isLastUser ? ' message-user-current' : '';
+                        const showCodeInterpreterBadge =
+                            msg.role === 'assistant' && messageHasCodeInterpreterCall(msg);
 
                         return `
                             <div class="message ${roleClass}${extraClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
@@ -3932,6 +3997,7 @@
                                     <div class="message-header-left">
                                         <span>${msg.role} ${msg.generation_time ? `(生成: ${msg.generation_time.toFixed(2)}s)` : ''}</span>
                                         ${isLastUser ? '<span class="current-turn-badge">当前问句</span>' : ''}
+                                        ${showCodeInterpreterBadge ? '<span class="code-interpreter-call-badge">调用 CodeInterpreter</span>' : ''}
                                         <span class="message-index">#${idx + 1}</span>
                                     </div>
                                     <span class="collapse-icon">▼</span>
@@ -4341,7 +4407,7 @@
                 const pre = document.getElementById('tool-raw-' + id);
                 if (pre) {
                     pre.hidden = !pre.hidden;
-                    toggleBtn.textContent = pre.hidden ? '查看原始 JSON' : '隐藏原始 JSON';
+                    toggleBtn.textContent = pre.hidden ? '查看原始代码' : '隐藏原始代码';
                 }
                 return;
             }

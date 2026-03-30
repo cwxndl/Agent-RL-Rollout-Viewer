@@ -81,12 +81,28 @@ function rolloutScore(r) {
     const reward = r.reward;
     return reward?.score ?? 0;
 }
+/** 与 viewer：多模态 user 的 content 为数组时，仅拼接 type===text 的片段再抽问句 */
+function contentToPlainTextForQuestion(content) {
+    if (typeof content === 'string') {
+        return content;
+    }
+    if (!Array.isArray(content)) {
+        return '';
+    }
+    const parts = [];
+    for (const p of content) {
+        if (p && typeof p === 'object' && p.type === 'text' && typeof p.text === 'string') {
+            parts.push(p.text);
+        }
+    }
+    return parts.join('\n');
+}
 function extractQuestion(content) {
     const nluMatch = content.match(/^(.*?)<NLU\(仅供参考\)>/s);
     if (nluMatch) {
         return nluMatch[1].trim();
     }
-    const timeMatch = content.match(/^(.*?)<当前系统时间>/s);
+    const timeMatch = content.match(/^(.*?)<当前系统时间>/s) || content.match(/^(.*?)<当前时间>/s);
     if (timeMatch) {
         return timeMatch[1].trim();
     }
@@ -99,7 +115,10 @@ function summarizeRollout(data, file) {
     for (let j = messages.length - 1; j >= 0; j--) {
         if (messages[j].role === 'user') {
             const c = messages[j].content;
-            const raw = typeof c === 'string' ? c : JSON.stringify(c);
+            let raw = contentToPlainTextForQuestion(c);
+            if (!raw.trim()) {
+                raw = typeof c === 'string' ? c : JSON.stringify(c);
+            }
             extractedQuestion = extractQuestion(raw);
             break;
         }
