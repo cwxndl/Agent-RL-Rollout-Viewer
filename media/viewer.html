@@ -1158,6 +1158,32 @@
             box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
+        .msg-part-text pre {
+            margin: 0 0 12px;
+        }
+
+        .msg-part-image {
+            margin: 12px 0;
+        }
+
+        .inline-rollout-image {
+            display: block;
+            max-width: 100%;
+            max-height: min(520px, 70vh);
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .msg-part-unknown {
+            opacity: 0.85;
+            font-size: 12px;
+        }
+
         /* Markdown样式 - 苹果风格 */
         .markdown-content {
             line-height: 1.8;
@@ -2059,6 +2085,107 @@
             }
         }
 
+        /** 仅拼接 type===text 的片段，供问句/NLU 正则解析（与 OpenAI 多模态 user 一致） */
+        function contentToPlainTextForExtraction(content) {
+            if (typeof content === 'string') {
+                return content;
+            }
+            if (!Array.isArray(content)) {
+                return '';
+            }
+            const parts = [];
+            for (let i = 0; i < content.length; i++) {
+                const p = content[i];
+                if (p && typeof p === 'object' && p.type === 'text' && typeof p.text === 'string') {
+                    parts.push(p.text);
+                }
+            }
+            return parts.join('\n');
+        }
+
+        function resolveRolloutImageSrc(imageUrlField) {
+            if (imageUrlField == null) {
+                return '';
+            }
+            if (typeof imageUrlField === 'string') {
+                const s = imageUrlField.trim();
+                if (!s) {
+                    return '';
+                }
+                if (s.startsWith('data:') || s.startsWith('http://') || s.startsWith('https://')) {
+                    return s;
+                }
+                const compact = s.replace(/\s/g, '');
+                if (compact.length > 80 && /^[A-Za-z0-9+/=]+$/.test(compact)) {
+                    return 'data:image/png;base64,' + compact;
+                }
+                return s;
+            }
+            if (typeof imageUrlField === 'object' && imageUrlField.url != null) {
+                return resolveRolloutImageSrc(imageUrlField.url);
+            }
+            return '';
+        }
+
+        function renderRolloutImageHtml(part) {
+            const src = resolveRolloutImageSrc(part.image_url != null ? part.image_url : part);
+            if (!src) {
+                return '<div class="msg-part-image msg-part-image--missing">[无法解析图片]</div>';
+            }
+            return (
+                '<div class="msg-part-image">' +
+                '<img class="inline-rollout-image" src="' +
+                escapeHtml(src) +
+                '" alt="消息附图" loading="lazy" />' +
+                '</div>'
+            );
+        }
+
+        function renderContentPartsArray(parts) {
+            if (!Array.isArray(parts) || parts.length === 0) {
+                return '<pre>（空内容）</pre>';
+            }
+            const blocks = [];
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                if (!p || typeof p !== 'object') {
+                    blocks.push('<pre class="msg-part-unknown">' + escapeHtml(JSON.stringify(p)) + '</pre>');
+                    continue;
+                }
+                if (p.type === 'text' && p.text != null) {
+                    blocks.push(
+                        '<div class="msg-part-text"><pre>' + escapeHtml(String(p.text)) + '</pre></div>'
+                    );
+                } else if (p.type === 'image_url') {
+                    blocks.push(renderRolloutImageHtml(p));
+                } else {
+                    blocks.push(
+                        '<pre class="msg-part-unknown">' + escapeHtml(JSON.stringify(p)) + '</pre>'
+                    );
+                }
+            }
+            return blocks.join('');
+        }
+
+        function renderAssistantPartsSequential(parts) {
+            if (!Array.isArray(parts)) {
+                return renderAssistantContent(String(parts));
+            }
+            let html = '';
+            for (let i = 0; i < parts.length; i++) {
+                const p = parts[i];
+                if (!p || typeof p !== 'object') {
+                    continue;
+                }
+                if (p.type === 'text' && p.text != null) {
+                    html += renderAssistantContent(String(p.text));
+                } else if (p.type === 'image_url') {
+                    html += renderRolloutImageHtml(p);
+                }
+            }
+            return html || '<pre>（空 assistant）</pre>';
+        }
+
         // 提取问句的函数
         function extractQuestion(content) {
             // 优先检查 <NLU(仅供参考)>
@@ -2067,8 +2194,8 @@
                 return nluMatch[1].trim();
             }
 
-            // 其次检查 <当前系统时间>
-            const timeMatch = content.match(/^(.*?)<当前系统时间>/s);
+            // 其次检查时间标签（兼容 <当前系统时间> 与 <当前时间>）
+            const timeMatch = content.match(/^(.*?)<(?:当前系统时间|当前时间)>/s);
             if (timeMatch) {
                 return timeMatch[1].trim();
             }
@@ -2086,6 +2213,7 @@
 
         const NLU_OPEN = '<NLU(仅供参考)>';
         const TIME_TAG = '<当前系统时间>';
+        const TIME_TAG_ALT = '<当前时间>';
 
         function parseStepNum(stepName) {
             const m = String(stepName).match(/step_(\d+)/i);
@@ -2097,11 +2225,22 @@
         }
 
         function normalizeMsgContent(content) {
-            if (typeof content === 'string') return content;
+            if (typeof content === 'string') {
+                return content;
+            }
             if (Array.isArray(content)) {
                 return content
                     .map(function (c) {
-                        return c && typeof c === 'object' && c.text != null ? c.text : JSON.stringify(c);
+                        if (!c || typeof c !== 'object') {
+                            return JSON.stringify(c);
+                        }
+                        if (c.type === 'text' && c.text != null) {
+                            return c.text;
+                        }
+                        if (c.type === 'image_url') {
+                            return '[图片]';
+                        }
+                        return JSON.stringify(c);
                     })
                     .join('\n');
             }
@@ -2111,16 +2250,37 @@
         function extractNluMarkdown(userRaw) {
             if (!userRaw || typeof userRaw !== 'string') return '';
             const a = userRaw.indexOf(NLU_OPEN);
-            const b = userRaw.indexOf(TIME_TAG);
-            if (a < 0 || b < 0 || b <= a) return '';
-            return userRaw.slice(a + NLU_OPEN.length, b).trim();
+            if (a < 0) return '';
+            const after = a + NLU_OPEN.length;
+            const b1 = userRaw.indexOf(TIME_TAG, a);
+            const b2 = userRaw.indexOf(TIME_TAG_ALT, a);
+            let b = -1;
+            if (b1 >= 0 && b2 >= 0) {
+                b = Math.min(b1, b2);
+            } else {
+                b = b1 >= 0 ? b1 : b2;
+            }
+            if (b < 0 || b <= a) return '';
+            return userRaw.slice(after, b).trim();
         }
 
         function extractLocalTimeFromUser(userRaw) {
             if (!userRaw || typeof userRaw !== 'string') return '';
-            const i = userRaw.indexOf(TIME_TAG);
-            if (i < 0) return '';
-            return userRaw.slice(i + TIME_TAG.length).trim();
+            const cands = [];
+            const i1 = userRaw.indexOf(TIME_TAG);
+            const i2 = userRaw.indexOf(TIME_TAG_ALT);
+            if (i1 >= 0) {
+                cands.push({ i: i1, len: TIME_TAG.length });
+            }
+            if (i2 >= 0) {
+                cands.push({ i: i2, len: TIME_TAG_ALT.length });
+            }
+            if (!cands.length) return '';
+            cands.sort(function (x, y) {
+                return x.i - y.i;
+            });
+            const c = cands[0];
+            return userRaw.slice(c.i + c.len).trim();
         }
 
         function findFirstLastUserIndex(messages) {
@@ -2162,11 +2322,15 @@
                 };
             }
             const lastUser = messages[lastUserIdx];
-            const raw = normalizeMsgContent(lastUser.content);
+            const raw = contentToPlainTextForExtraction(lastUser.content);
+            const forExtract = raw.trim()
+                ? raw
+                : normalizeMsgContent(lastUser.content) ||
+                  (typeof lastUser.content === 'string' ? lastUser.content : '');
             return {
-                nlu_markdown: extractNluMarkdown(raw),
-                user_content: extractQuestion(raw),
-                local_time: extractLocalTimeFromUser(raw),
+                nlu_markdown: extractNluMarkdown(forExtract),
+                user_content: extractQuestion(forExtract),
+                local_time: extractLocalTimeFromUser(forExtract),
                 history: buildHistoryString(messages)
             };
         }
@@ -2701,7 +2865,13 @@
                 for (let j = messages.length - 1; j >= 0; j--) {
                     if (messages[j].role === 'user') {
                         const c = messages[j].content;
-                        const raw = typeof c === 'string' ? c : JSON.stringify(c);
+                        let raw = contentToPlainTextForExtraction(c);
+                        if (!raw.trim()) {
+                            raw =
+                                typeof c === 'string'
+                                    ? c
+                                    : normalizeMsgContent(c) || JSON.stringify(c);
+                        }
                         extractedQuestion = extractQuestion(raw);
                         break;
                     }
@@ -3387,23 +3557,36 @@
                 <div class="messages-container">
                     ${messages.map((msg, idx) => {
                         const roleClass = `message-${msg.role}`;
-                        let content = msg.content;
-
-                        // 处理tool content (可能是数组)
-                        if (Array.isArray(content)) {
-                            content = content.map(c => c.text || JSON.stringify(c)).join('\n');
-                        }
-
-                        // 截断过长的system消息
-                        if (msg.role === 'system' && content.length > 500) {
-                            content = content.substring(0, 500) + '... (已截断)';
-                        }
-
-                        // 除了最后一个assistant，其他所有消息默认折叠
+                        const rawContent = msg.content;
                         const shouldCollapse = idx !== lastAssistantIndex;
-
-                        // 判断是否是最后一个assistant（需要特殊渲染）
                         const isLastAssistant = idx === lastAssistantIndex && msg.role === 'assistant';
+
+                        let bodyHtml = '';
+                        if (Array.isArray(rawContent)) {
+                            if (msg.role === 'system') {
+                                const plain = contentToPlainTextForExtraction(rawContent);
+                                if (plain.length > 500) {
+                                    bodyHtml =
+                                        '<pre>' +
+                                        escapeHtml(plain.substring(0, 500)) +
+                                        '... (已截断)</pre>';
+                                } else {
+                                    bodyHtml = renderContentPartsArray(rawContent);
+                                }
+                            } else if (isLastAssistant) {
+                                bodyHtml = renderAssistantPartsSequential(rawContent);
+                            } else {
+                                bodyHtml = renderContentPartsArray(rawContent);
+                            }
+                        } else {
+                            let str = rawContent == null ? '' : String(rawContent);
+                            if (msg.role === 'system' && str.length > 500) {
+                                str = str.substring(0, 500) + '... (已截断)';
+                            }
+                            bodyHtml = isLastAssistant
+                                ? renderAssistantContent(str)
+                                : '<pre>' + escapeHtml(str) + '</pre>';
+                        }
 
                         return `
                             <div class="message ${roleClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
@@ -3415,7 +3598,7 @@
                                     <span class="collapse-icon">▼</span>
                                 </div>
                                 <div class="message-content">
-                                    ${isLastAssistant ? renderAssistantContent(content) : `<pre>${escapeHtml(content)}</pre>`}
+                                    ${bodyHtml}
                                 </div>
                             </div>
                         `;
@@ -3425,9 +3608,10 @@
         }
 
         function renderAssistantContent(content) {
+            const str = typeof content === 'string' ? content : String(content ?? '');
             // 检查是否包含</think>
-            if (content.includes('</think>')) {
-                const parts = content.split('</think>');
+            if (str.includes('</think>')) {
+                const parts = str.split('</think>');
                 const thinkContent = parts[0].replace(/<think>/g, '').trim();
                 const answerContent = parts.slice(1).join('</think>').trim();
 
@@ -3444,7 +3628,7 @@
                 `;
             } else {
                 // 没有</think>标签，直接渲染markdown
-                return `<div class="markdown-content">${simpleMarkdown(content)}</div>`;
+                return `<div class="markdown-content">${simpleMarkdown(str)}</div>`;
             }
         }
 
