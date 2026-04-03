@@ -3464,6 +3464,8 @@
                                 <div class="detail-json-toolbar-inline" id="detailJsonToolbar" style="display: none;" aria-hidden="true">
                                     <button type="button" class="btn-json-toggle" id="btnToggleRawJson" onclick="toggleDetailRawJson()">查看原始 JSON</button>
                                     <button type="button" class="btn-json-toggle" id="btnCopyRawJson" onclick="copyDetailRawJson()">复制 JSON</button>
+                                    <button type="button" class="btn-json-toggle" id="btnExportDeductions" onclick="exportDetailDeductions()">导出 deductions</button>
+                                    <button type="button" class="btn-json-toggle" id="btnExportDeductionReport" onclick="exportDeductionSummaryReport()">导出扣分报告</button>
                                 </div>
                             </div>
                         </div>
@@ -3869,6 +3871,342 @@
             } catch {
                 alert('复制失败，请检查浏览器剪贴板权限，或稍后重试。');
             }
+        }
+
+        function parseRewardResponseObject(rr) {
+            if (rr == null) {
+                return null;
+            }
+            if (typeof rr === 'object' && !Array.isArray(rr)) {
+                return rr;
+            }
+            if (typeof rr === 'string') {
+                try {
+                    const o = JSON.parse(rr);
+                    return o && typeof o === 'object' && !Array.isArray(o) ? o : null;
+                } catch {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function getRawOutputsFromRollout(rollout) {
+            const rr = parseRewardResponseObject(rollout?.reward?.reward_info?.reward_response);
+            const ro = rr && rr.raw_outputs;
+            if (!ro || typeof ro !== 'object') {
+                return null;
+            }
+            return ro;
+        }
+
+        /** 从单段文本中提取所有 <deductions>...</deductions> 块（仅内部文本） */
+        function extractDeductionsInners(text) {
+            const s = text == null ? '' : String(text);
+            const re = /<deductions>([\s\S]*?)<\/deductions>/gi;
+            const out = [];
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                out.push(m[1].trim());
+            }
+            return out;
+        }
+
+        /** 从单段文本中提取所有 <deductions>...</deductions> 块（含标签） */
+        function extractDeductionsBlocks(text) {
+            return extractDeductionsInners(text).map(function (inner) {
+                return '<deductions>' + inner + '</deductions>';
+            });
+        }
+
+        /**
+         * 解析单个 deductions 块内的 `- Key: value` 行（Evidence 等字段可续行）。
+         */
+        function parseDeductionBlockFields(inner) {
+            const fields = {};
+            if (!inner) {
+                return fields;
+            }
+            const lines = inner.split(/\r?\n/);
+            let currentKey = null;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const m = line.match(/^\s*-\s*(.+?)\s*:\s*(.*)$/);
+                if (m) {
+                    currentKey = m[1].trim();
+                    fields[currentKey] = m[2].trim();
+                } else if (currentKey && line.trim() !== '') {
+                    fields[currentKey] =
+                        (fields[currentKey] ? fields[currentKey] + ' ' : '') + line.trim();
+                }
+            }
+            return fields;
+        }
+
+        /**
+         * 根据 raw_outputs 中 trajectory / answer 的 <deductions> 生成中文 Markdown 扣分报告。
+         */
+        function buildDeductionSummaryReport(rollout) {
+            const ro = getRawOutputsFromRollout(rollout);
+            if (!ro) {
+                return '';
+            }
+            const trajInners = extractDeductionsInners(ro.trajectory);
+            const ansInners = extractDeductionsInners(ro.answer);
+            if (trajInners.length === 0 && ansInners.length === 0) {
+                return '';
+            }
+
+            const rr = parseRewardResponseObject(rollout?.reward?.reward_info?.reward_response);
+            const scores = rr && rr.scores && typeof rr.scores === 'object' ? rr.scores : null;
+            const lines = [];
+
+            lines.push('# Rollout 扣分报告');
+            lines.push('');
+            lines.push('## 概况');
+            lines.push('');
+            if (rollout.question != null && String(rollout.question).trim() !== '') {
+                lines.push('- **用户问题**：' + String(rollout.question).trim());
+            }
+            if (rollout.request_id != null && String(rollout.request_id).trim() !== '') {
+                lines.push('- **Request ID**：' + String(rollout.request_id).trim());
+            }
+            if (scores) {
+                if (scores.trajectory != null) {
+                    lines.push('- **轨迹评分（trajectory）**：' + scores.trajectory);
+                }
+                if (scores.answer != null) {
+                    lines.push('- **回答评分（answer）**：' + scores.answer);
+                }
+            }
+            const fr = rollout?.reward?.reward_info?.final_reward;
+            if (fr != null) {
+                lines.push(
+                    '- **综合 reward**：' +
+                        (typeof fr === 'number' ? fr.toFixed(3) : String(fr))
+                );
+            }
+            lines.push('');
+
+            const fieldLabels = [
+                ['Dimension', '扣分维度'],
+                ['Rule', '触犯规则'],
+                ['Evidence', '证据与说明'],
+                ['Points', '本条扣分'],
+                ['Total deductions', '累计扣分（本节）'],
+                ['Raw score', '折算说明'],
+                ['Final score', '本节最终得分']
+            ];
+            const knownEn = new Set(fieldLabels.map(function (x) {
+                return x[0];
+            }));
+
+            function emitStep(sectionZh, idx, fields) {
+                lines.push('### ' + sectionZh + ' · 扣分项 ' + idx);
+                lines.push('');
+                for (let j = 0; j < fieldLabels.length; j++) {
+                    const en = fieldLabels[j][0];
+                    const zh = fieldLabels[j][1];
+                    const v = fields[en];
+                    if (v != null && String(v).trim() !== '') {
+                        lines.push('- **' + zh + '**（' + en + '）：' + String(v).trim());
+                    }
+                }
+                const keys = Object.keys(fields);
+                for (let k = 0; k < keys.length; k++) {
+                    const key = keys[k];
+                    if (!knownEn.has(key) && fields[key] != null && String(fields[key]).trim() !== '') {
+                        lines.push('- **' + key + '**：' + String(fields[key]).trim());
+                    }
+                }
+                lines.push('');
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 一、轨迹（Trajectory）扣分明细');
+            lines.push('');
+            if (trajInners.length === 0) {
+                lines.push('*（本段无 `<deductions>` 记录）*');
+                lines.push('');
+            } else {
+                for (let t = 0; t < trajInners.length; t++) {
+                    emitStep('轨迹', t + 1, parseDeductionBlockFields(trajInners[t]));
+                }
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 二、最终回答（Answer）扣分明细');
+            lines.push('');
+            if (ansInners.length === 0) {
+                lines.push('*（本段无 `<deductions>` 记录）*');
+                lines.push('');
+            } else {
+                for (let a = 0; a < ansInners.length; a++) {
+                    emitStep('回答', a + 1, parseDeductionBlockFields(ansInners[a]));
+                }
+            }
+
+            function shortRule(r) {
+                if (r == null || r === '') {
+                    return '';
+                }
+                let t = String(r).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+                if (t.length > 100) {
+                    t = t.substring(0, 97) + '...';
+                }
+                return t;
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 三、扣分维度与规则汇总表');
+            lines.push('');
+            lines.push('| 环节 | 序号 | 扣分维度 | 触犯规则（摘要） | 本条扣分 |');
+            lines.push('|------|------|----------|------------------|----------|');
+            for (let t = 0; t < trajInners.length; t++) {
+                const f = parseDeductionBlockFields(trajInners[t]);
+                lines.push(
+                    '| 轨迹 | ' +
+                        (t + 1) +
+                        ' | ' +
+                        (f.Dimension || '').replace(/\|/g, '\\|') +
+                        ' | ' +
+                        shortRule(f.Rule) +
+                        ' | ' +
+                        (f.Points || '').replace(/\|/g, '\\|') +
+                        ' |'
+                );
+            }
+            for (let a = 0; a < ansInners.length; a++) {
+                const f = parseDeductionBlockFields(ansInners[a]);
+                lines.push(
+                    '| 回答 | ' +
+                        (a + 1) +
+                        ' | ' +
+                        (f.Dimension || '').replace(/\|/g, '\\|') +
+                        ' | ' +
+                        shortRule(f.Rule) +
+                        ' | ' +
+                        (f.Points || '').replace(/\|/g, '\\|') +
+                        ' |'
+                );
+            }
+            lines.push('');
+            lines.push(
+                '*本报告由 Viewer 根据 `reward.reward_info.reward_response.raw_outputs` 中的 `<deductions>` 自动解析生成。*'
+            );
+            lines.push('');
+
+            return lines.join('\n');
+        }
+
+        async function exportTextFileWithClipboardFallback(text, filename, btn, baseLabel, okFileLabel, okClipLabel) {
+            okFileLabel = okFileLabel || '已下载';
+            okClipLabel = okClipLabel || '已复制到剪贴板';
+            try {
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                if (btn) {
+                    btn.textContent = okFileLabel;
+                    setTimeout(function () {
+                        btn.textContent = baseLabel;
+                    }, 1600);
+                }
+            } catch (e1) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    if (btn) {
+                        btn.textContent = okClipLabel;
+                        setTimeout(function () {
+                            btn.textContent = baseLabel;
+                        }, 1600);
+                    }
+                } catch (e2) {
+                    alert('导出失败：无法保存文件且无法写入剪贴板。');
+                }
+            }
+        }
+
+        function buildDeductionsExportText(rollout) {
+            const ro = getRawOutputsFromRollout(rollout);
+            if (!ro) {
+                return '';
+            }
+            const trajBlocks = extractDeductionsBlocks(ro.trajectory);
+            const ansBlocks = extractDeductionsBlocks(ro.answer);
+            if (trajBlocks.length === 0 && ansBlocks.length === 0) {
+                return '';
+            }
+            const lines = [];
+            lines.push('raw_outputs.trajectory — <deductions>');
+            lines.push('');
+            trajBlocks.forEach(function (b, i) {
+                if (trajBlocks.length > 1) {
+                    lines.push('<!-- block ' + (i + 1) + ' -->');
+                }
+                lines.push(b);
+                lines.push('');
+            });
+            lines.push('---');
+            lines.push('');
+            lines.push('raw_outputs.answer — <deductions>');
+            lines.push('');
+            ansBlocks.forEach(function (b, i) {
+                if (ansBlocks.length > 1) {
+                    lines.push('<!-- block ' + (i + 1) + ' -->');
+                }
+                lines.push(b);
+                lines.push('');
+            });
+            return lines.join('\n').trim() + '\n';
+        }
+
+        async function exportDetailDeductions() {
+            if (!detailRolloutPayload) {
+                return;
+            }
+            const text = buildDeductionsExportText(detailRolloutPayload);
+            if (!text) {
+                alert('当前 Rollout 未找到 raw_outputs，或 trajectory/answer 中不含 <deductions> 标签。');
+                return;
+            }
+            const btn = document.getElementById('btnExportDeductions');
+            const baseLabel = '导出 deductions';
+            const id =
+                detailRolloutPayload.request_id != null && String(detailRolloutPayload.request_id)
+                    ? String(detailRolloutPayload.request_id).replace(/[^\w.-]+/g, '_')
+                    : 'rollout';
+            const filename = 'deductions_' + id + '.txt';
+            await exportTextFileWithClipboardFallback(text, filename, btn, baseLabel);
+        }
+
+        async function exportDeductionSummaryReport() {
+            if (!detailRolloutPayload) {
+                return;
+            }
+            const text = buildDeductionSummaryReport(detailRolloutPayload);
+            if (!text) {
+                alert('当前 Rollout 未找到 raw_outputs，或 trajectory/answer 中不含 <deductions> 标签。');
+                return;
+            }
+            const btn = document.getElementById('btnExportDeductionReport');
+            const baseLabel = '导出扣分报告';
+            const id =
+                detailRolloutPayload.request_id != null && String(detailRolloutPayload.request_id)
+                    ? String(detailRolloutPayload.request_id).replace(/[^\w.-]+/g, '_')
+                    : 'rollout';
+            const filename = 'deduction_report_' + id + '.md';
+            await exportTextFileWithClipboardFallback(text, filename, btn, baseLabel);
         }
 
         function assistantTextHasCodeInterpreterCall(text) {
