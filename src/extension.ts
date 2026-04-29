@@ -171,7 +171,7 @@ async function scanStepFoldersAsync(rolloutFolder: string): Promise<{ name: stri
                     if (fileStat.isDirectory()) {
                         // 快速计数：只读取目录，不读取文件内容
                         const subFiles = await readdir(fullPath);
-                        const jsonCount = subFiles.filter(f => f.endsWith('.json')).length;
+                        const jsonCount = subFiles.filter(f => f.endsWith('.json') && !f.startsWith('.')).length;
                         return { name: file, path: fullPath, fileCount: jsonCount };
                     }
                 } catch {
@@ -243,6 +243,7 @@ class StepItem extends vscode.TreeItem {
         public readonly fileCount: number
     ) {
         super(stepName, vscode.TreeItemCollapsibleState.None);
+        this.id = stepName + '_' + fileCount + '_' + Date.now();
         this.tooltip = `${fileCount} rollout files`;
         this.description = `${fileCount} files`;
         this.contextValue = 'stepFolder';

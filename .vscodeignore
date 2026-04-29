@@ -17,3 +17,10 @@ SETUP_GUIDE.md
 START_FROM_ZERO.md
 USAGE_WORKFLOW.md
 VIEWER_MODIFICATIONS.md
+**/*.txt
+tmp.json
+img.json
+analyze_deductions.py
+deduction_analysis.json
+aime_fast_prompts.py
+agent-transcripts/**
