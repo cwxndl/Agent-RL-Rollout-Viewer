@@ -1,0 +1,146 @@
+{
+  "overall": {
+    "step_20": {
+      "count": 233,
+      "avg_score": 0.634,
+      "perfect_pct": 19.7,
+      "zero_pct": 5.2
+    },
+    "step_40": {
+      "count": 236,
+      "avg_score": 0.644,
+      "perfect_pct": 28.0,
+      "zero_pct": 7.2
+    },
+    "step_60": {
+      "count": 234,
+      "avg_score": 0.688,
+      "perfect_pct": 21.8,
+      "zero_pct": 3.8
+    }
+  },
+  "rule_trends": [
+    {
+      "rule": "Fatal: Hallucination",
+      "step_20": 20,
+      "step_40": 10,
+      "step_60": 18
+    },
+    {
+      "rule": "T4: Slightly overlong trajectory with minor redundancy that does not significantly harm outcome quality",
+      "step_20": 11,
+      "step_40": 12,
+      "step_60": 17
+    },
+    {
+      "rule": "D1: A tool-dependent claim has a citation but the cited source does not precisely support the stated value.",
+      "step_20": 11,
+      "step_40": 14,
+      "step_60": 13
+    },
+    {
+      "rule": "T3: Suboptimal keyword choice that still returns usable results",
+      "step_20": 12,
+      "step_40": 8,
+      "step_60": 10
+    },
+    {
+      "rule": "Fatal: Hallucination - a material claim (numbers, dates, data points) entirely unsupported by trajectory evidence",
+      "step_20": 6,
+      "step_40": 14,
+      "step_60": 8
+    },
+    {
+      "rule": "D1: Minor ambiguity in entity or time-window wording that increases the reader's verification cost",
+      "step_20": 10,
+      "step_40": 8,
+      "step_60": 10
+    },
+    {
+      "rule": "D1: Temporal calibration violation (per the Agent System Prompt): treats a historical/completed event as an active catalyst, or forecasts a past event instead of analyzing what actually happened.",
+      "step_20": 13,
+      "step_40": 4,
+      "step_60": 10
+    },
+    {
+      "rule": "D5: No actionable closing guidance pointing the user toward a clear next step.",
+      "step_20": 15,
+      "step_40": 3,
+      "step_60": 5
+    },
+    {
+      "rule": "T4: Serializes clearly independent tool calls that should have been parallelized",
+      "step_20": 8,
+      "step_40": 7,
+      "step_60": 5
+    },
+    {
+      "rule": "D1: A core numeric, temporal, or entity claim lacks any supporting trajectory evidence.",
+      "step_20": 7,
+      "step_40": 4,
+      "step_60": 6
+    },
+    {
+      "rule": "T3: Missing ticker resolution (using pronouns instead of explicit symbols)",
+      "step_20": 11,
+      "step_40": 3,
+      "step_60": 3
+    },
+    {
+      "rule": "T4: Serializes clearly independent tool calls that should have been parallelized (e.g., fetching fundamentals and news for the same stock in separate sequential rounds when neither depends on the other)",
+      "step_20": 7,
+      "step_40": 4,
+      "step_60": 6
+    },
+    {
+      "rule": "T3: Minor formatting deviation in tool inputs",
+      "step_20": 1,
+      "step_40": 8,
+      "step_60": 7
+    },
+    {
+      "rule": "D1: A key claim directly contradicts available tool results or conversation history.",
+      "step_20": 5,
+      "step_40": 4,
+      "step_60": 7
+    },
+    {
+      "rule": "Fatal: Core contradiction",
+      "step_20": 6,
+      "step_40": 3,
+      "step_60": 3
+    },
+    {
+      "rule": "T3: Combining multiple unrelated topics in a single search_web call",
+      "step_20": 6,
+      "step_40": 4,
+      "step_60": 2
+    },
+    {
+      "rule": "Fatal: Hallucination - a material claim entirely unsupported by trajectory evidence",
+      "step_20": 6,
+      "step_40": 2,
+      "step_60": 4
+    },
+    {
+      "rule": "T4: Slightly overlong trajectory with minor redundancy that does not significantly harm outcome quality.",
+      "step_20": 3,
+      "step_40": 4,
+      "step_60": 5
+    },
+    {
+      "rule": "D2: Misses one or more of the user's core sub-tasks, making the answer not directly actionable.",
+      "step_20": 4,
+      "step_40": 1,
+      "step_60": 7
+    },
+    {
+      "rule": "T3: Wrong tool for task (routing violation per the Agent System Prompt's geographic routing rules)",
+      "step_20": 3,
+      "step_40": 4,
+      "step_60": 4
+    }
+  ],
+  "worsened_questions": [],
+  "stable_bad_questions": []
+}

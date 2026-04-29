@@ -10,6 +10,7 @@
 - 🎨 **优雅UI**：苹果风格设计，支持深色和浅色主题
 - 💡 **Markdown渲染**：自动识别并格式化assistant的回复内容
 - 🔍 **详细分析**：支持查看完整的对话轨迹、reward详情和元数据
+- 📤 **扣分导出**：单条可导出 `<deductions>` 原文或中文 Markdown 扣分报告；当前 Step 下可一键合并导出全部 **deductions**（便于批量总结分析，API 亦支持 `mode=report`）
 
 ## 📸 截图
 
@@ -67,7 +68,7 @@ npm run compile
 npm run package
 
 # 安装到VSCode
-code --install-extension agent-rl-rollout-viewer-0.1.0.vsix
+code --install-extension agent-rl-rollout-viewer-0.1.14.vsix
 ```
 
 ## ⚙️ 配置

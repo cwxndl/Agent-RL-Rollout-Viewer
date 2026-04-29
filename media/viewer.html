@@ -463,6 +463,48 @@
             font-weight: 600;
         }
 
+        .stat-item.stat-item-action {
+            margin-left: 4px;
+            padding: 0;
+            border: none;
+            background: transparent;
+        }
+
+        .stat-item.stat-item-action .btn-deduction-export {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 14px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(102, 126, 234, 0.35);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 226, 0.08));
+            color: #5a67d8;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .stat-item.stat-item-action .btn-deduction-export:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.18), rgba(118, 75, 226, 0.18));
+            border-color: rgba(102, 126, 234, 0.55);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.18);
+        }
+
+        .stat-item.stat-item-action .btn-deduction-export:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        .stat-item.stat-item-action .btn-deduction-export:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         /* 三栏布局：左侧问句 + 中间详情（最大） + 右侧Rollout */
         .main-content {
             display: flex;
@@ -647,6 +689,53 @@
         .question-list {
             overflow-y: auto;
             flex: 1;
+        }
+
+        .question-image-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, #f59e0b22, #f9731622);
+            color: #d97706;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .btn-translate-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(102, 126, 234, 0.3);
+            background: white;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-translate-toggle:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.06);
+        }
+        .btn-translate-toggle.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+        .question-translated {
+            font-size: 12px;
+            color: #667eea;
+            margin-top: 4px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            font-style: italic;
         }
 
         .question-item {
@@ -1016,6 +1105,25 @@
             padding: 24px;
         }
 
+        .msg-translate-block {
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: rgba(102, 126, 234, 0.06);
+            border-left: 3px solid #667eea;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #333;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .msg-translate-block .msg-tr-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
         .detail-empty {
             text-align: center;
             padding: 100px 32px;
@@ -1109,6 +1217,11 @@
         .message-tool {
             background: linear-gradient(135deg, rgba(255, 243, 224, 0.8) 0%, rgba(255, 233, 204, 0.8) 100%);
             border-left: 4px solid #ff9800;
+        }
+
+        .message-tool .markdown-content {
+            overflow-x: auto;
+            max-width: 100%;
         }
 
         .message-header {
@@ -1405,6 +1518,56 @@
             font-size: 12px;
             max-height: 320px;
             overflow: auto;
+        }
+
+        .tool-call-card {
+            margin: 12px 0;
+            border-radius: 12px;
+            border: 1px solid rgba(156, 39, 176, 0.2);
+            background: linear-gradient(135deg, rgba(156, 39, 176, 0.08), rgba(103, 80, 164, 0.08));
+            overflow: hidden;
+        }
+
+        .tool-call-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(156, 39, 176, 0.14);
+            background: rgba(255, 255, 255, 0.65);
+        }
+
+        .tool-call-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #5e35b1;
+        }
+
+        .tool-call-body {
+            padding: 10px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .tool-call-param {
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: 8px;
+            padding: 8px 10px;
+        }
+
+        .tool-call-param-key {
+            font-size: 11px;
+            color: #6e6e73;
+            margin-bottom: 4px;
+        }
+
+        .tool-call-param-val {
+            font-size: 12px;
+            color: #1d1d1f;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.55;
         }
 
         /* Markdown样式 - 苹果风格 */
@@ -1795,6 +1958,109 @@
             color: #1d1d1f;
         }
 
+        .eval-card {
+            margin: 8px 0 10px 15px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(102, 126, 234, 0.16);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .eval-score-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .eval-score-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 226, 0.08));
+            border-radius: 8px;
+            padding: 7px 9px;
+        }
+
+        .eval-score-item .k {
+            font-size: 11px;
+            color: #6e6e73;
+            margin-bottom: 2px;
+        }
+
+        .eval-score-item .v {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1d1d1f;
+        }
+
+        .eval-dim-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+
+        .eval-dim-chip {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(255, 193, 7, 0.12);
+            border: 1px solid rgba(255, 193, 7, 0.32);
+            color: #7a5b00;
+            white-space: nowrap;
+        }
+
+        .eval-item {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.025);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .eval-item-main {
+            margin-top: 4px;
+            line-height: 1.6;
+        }
+
+        .eval-item-tr {
+            margin-top: 6px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border-left: 3px solid rgba(102, 126, 234, 0.55);
+            background: rgba(102, 126, 234, 0.08);
+            color: #2e3d8f;
+            font-size: 12px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .eval-item-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .eval-badge {
+            font-size: 11px;
+            border-radius: 999px;
+            padding: 2px 8px;
+            background: rgba(102, 126, 234, 0.12);
+            border: 1px solid rgba(102, 126, 234, 0.25);
+            color: #4753b5;
+        }
+
+        .eval-raw details {
+            margin-top: 8px;
+        }
+
+        .eval-raw summary {
+            cursor: pointer;
+            font-size: 12px;
+            color: #5b5f8f;
+            user-select: none;
+        }
+
         .empty-state {
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
@@ -2016,6 +2282,7 @@
         const FETCH_TIMEOUT_STEPS_MS = 120000;
         const FETCH_TIMEOUT_SUMMARY_MS = 600000;
         const FETCH_TIMEOUT_ROLLOUT_MS = 180000;
+        const FETCH_TIMEOUT_STEP_DEDUCTIONS_MS = 600000;
 
         /** 避免网络/服务异常时 fetch 一直 pending，界面永久停在「正在加载 Step 列表」 */
         async function fetchWithTimeout(url, init, timeoutMs) {
@@ -2059,6 +2326,194 @@
 
         /** 问句侧栏筛选：全部 | 仅方差≠0 | 仅方差=0 */
         let questionCategoryFilter = 'all';
+
+        let translateEnabled = false;
+        const translateCache = new Map();
+        let translatePending = new Set();
+
+        function isChinese(text) {
+            var stripped = text.replace(/[\s\d.,;:!?'"()\[\]{}<>\/\\@#$%^&*+=\-_~`|]/g, '');
+            if (!stripped) return true;
+            var cn = 0;
+            var len = Math.min(stripped.length, 60);
+            for (var i = 0; i < len; i++) {
+                var code = stripped.charCodeAt(i);
+                if ((code >= 0x4e00 && code <= 0x9fff) || (code >= 0x3400 && code <= 0x4dbf)) cn++;
+            }
+            return cn / len > 0.3;
+        }
+
+        async function translateChunk(text) {
+            var q = encodeURIComponent(text);
+            var resp = await fetch(
+                'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=' + q
+            );
+            if (!resp.ok) return null;
+            var data = await resp.json();
+            var out = '';
+            if (Array.isArray(data) && Array.isArray(data[0])) {
+                for (var i = 0; i < data[0].length; i++) {
+                    if (data[0][i] && data[0][i][0]) out += data[0][i][0];
+                }
+            }
+            return out || null;
+        }
+
+        function splitForTranslate(text, maxLen) {
+            var chunks = [];
+            var remaining = text;
+            while (remaining.length > 0) {
+                if (remaining.length <= maxLen) {
+                    chunks.push(remaining);
+                    break;
+                }
+                var cut = remaining.lastIndexOf('\n', maxLen);
+                if (cut < maxLen * 0.3) cut = remaining.lastIndexOf('. ', maxLen);
+                if (cut < maxLen * 0.3) cut = remaining.lastIndexOf(' ', maxLen);
+                if (cut < maxLen * 0.3) cut = maxLen;
+                chunks.push(remaining.substring(0, cut + 1));
+                remaining = remaining.substring(cut + 1);
+            }
+            return chunks;
+        }
+
+        async function translateText(text) {
+            if (!text || isChinese(text)) return text;
+            if (translateCache.has(text)) return translateCache.get(text);
+            if (translatePending.has(text)) return null;
+            translatePending.add(text);
+            try {
+                var chunks = splitForTranslate(text, 800);
+                var results = [];
+                for (var i = 0; i < chunks.length; i++) {
+                    var r = await translateChunk(chunks[i]);
+                    if (r) results.push(r);
+                    else results.push(chunks[i]);
+                }
+                var translated = results.join('');
+                if (translated && translated !== text) {
+                    translateCache.set(text, translated);
+                    return translated;
+                }
+                return null;
+            } catch (e) {
+                return null;
+            } finally {
+                translatePending.delete(text);
+            }
+        }
+
+        async function translateAllVisibleQuestions() {
+            if (!translateEnabled || !clusteredData.length) return;
+            var indices = getFilteredQuestionIndices(
+                (document.getElementById('questionSearchInput') || {}).value || ''
+            );
+            var tasks = [];
+            for (var i = 0; i < indices.length; i++) {
+                var c = clusteredData[indices[i]];
+                if (c && c.content && !isChinese(c.content) && !translateCache.has(c.content)) {
+                    tasks.push(translateText(c.content));
+                }
+            }
+            if (tasks.length) {
+                await Promise.allSettled(tasks);
+                refreshTranslateDisplay();
+            }
+        }
+
+        function refreshTranslateDisplay() {
+            document.querySelectorAll('.question-item[data-index]').forEach(function (el) {
+                var idx = parseInt(el.getAttribute('data-index'), 10);
+                var c = clusteredData[idx];
+                if (!c) return;
+                var existingTr = el.querySelector('.question-translated');
+                if (translateEnabled && !isChinese(c.content)) {
+                    var tr = translateCache.get(c.content);
+                    if (tr) {
+                        if (existingTr) {
+                            existingTr.textContent = '译: ' + tr;
+                            existingTr.style.display = '';
+                        } else {
+                            var div = document.createElement('div');
+                            div.className = 'question-translated';
+                            div.textContent = '译: ' + tr;
+                            var topDiv = el.querySelector('.question-item-top');
+                            if (topDiv) topDiv.parentNode.insertBefore(div, topDiv.nextSibling);
+                        }
+                    }
+                } else {
+                    if (existingTr) existingTr.style.display = 'none';
+                }
+            });
+        }
+
+        async function translateDetailMessages() {
+            var btn = document.getElementById('btnTranslateDetail');
+
+            var already = document.querySelectorAll('.msg-translate-block');
+            if (already.length) {
+                already.forEach(function (el) { el.remove(); });
+                if (btn) btn.textContent = '🌐 翻译内容';
+                return;
+            }
+
+            if (btn) btn.textContent = '翻译中…';
+
+            var tasks = [];
+
+            document.querySelectorAll('.messages-container .message').forEach(function (msgEl) {
+                if (!msgEl.classList.contains('message-user') && !msgEl.classList.contains('message-assistant')) return;
+                var contentEl = msgEl.querySelector('.message-content');
+                if (!contentEl) return;
+                var text = (contentEl.innerText || contentEl.textContent || '').trim();
+                if (text && !isChinese(text)) {
+                    tasks.push({ el: contentEl, text: text });
+                }
+            });
+
+            document.querySelectorAll('.reward-info pre').forEach(function (preEl) {
+                var text = (preEl.innerText || preEl.textContent || '').trim();
+                if (text && !isChinese(text)) {
+                    tasks.push({ el: preEl, text: text, after: true });
+                }
+            });
+
+            if (!tasks.length) {
+                if (btn) btn.textContent = '🌐 翻译内容';
+                return;
+            }
+
+            var total = tasks.length;
+            var done = 0;
+            for (var i = 0; i < tasks.length; i++) {
+                var t = tasks[i];
+                done++;
+                if (btn) btn.textContent = '翻译中 ' + done + '/' + total + '…';
+                var translated = null;
+                try { translated = await translateText(t.text); } catch (e) {}
+                if (!translated) continue;
+                var div = document.createElement('div');
+                div.className = 'msg-translate-block';
+                div.innerHTML = '<div class="msg-tr-label">中文翻译</div>' + escapeHtml(translated);
+                if (t.after) {
+                    t.el.parentNode.insertBefore(div, t.el.nextSibling);
+                } else {
+                    t.el.appendChild(div);
+                }
+            }
+
+            if (btn) btn.textContent = '🌐 隐藏翻译';
+        }
+
+        function toggleTranslate() {
+            translateEnabled = !translateEnabled;
+            var btn = document.getElementById('btnTranslateToggle');
+            if (btn) btn.classList.toggle('active', translateEnabled);
+            if (translateEnabled) {
+                translateAllVisibleQuestions();
+            }
+            refreshTranslateDisplay();
+        }
 
         window.addEventListener('DOMContentLoaded', function () {
             void loadInitialSteps().catch(function (err) {
@@ -2210,7 +2665,7 @@
 
             try {
                 const r = await fetchWithTimeout(
-                    apiUrl('/api/summary?step=' + encodeURIComponent(step.name)),
+                    apiUrl('/api/summary?step=' + encodeURIComponent(step.name) + '&nocache=1'),
                     {},
                     FETCH_TIMEOUT_SUMMARY_MS
                 );
@@ -2352,15 +2807,25 @@
 
         let toolCallRawStore = {};
         let toolCallRawSeq = 0;
+        let deductionTranslateStore = {};
+        let deductionTranslateSeq = 0;
 
         function beginMessageRender() {
             toolCallRawStore = {};
             toolCallRawSeq = 0;
+            deductionTranslateStore = {};
+            deductionTranslateSeq = 0;
         }
 
         function registerToolCallRaw(s) {
             const id = ++toolCallRawSeq;
             toolCallRawStore[String(id)] = s;
+            return id;
+        }
+
+        function registerDeductionTranslateText(s) {
+            const id = ++deductionTranslateSeq;
+            deductionTranslateStore[String(id)] = String(s == null ? '' : s);
             return id;
         }
 
@@ -2377,11 +2842,67 @@
             return s;
         }
 
+        function parseXmlStyleToolCall(inner) {
+            const s = String(inner || '');
+            const fnMatch = s.match(/<function=([^>\s]+)>/i);
+            if (!fnMatch) {
+                return null;
+            }
+            const params = [];
+            const re = /<parameter=([^>\s]+)>\s*([\s\S]*?)\s*<\/parameter>/gi;
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                params.push({
+                    key: m[1],
+                    value: (m[2] || '').trim()
+                });
+            }
+            return {
+                name: fnMatch[1],
+                params
+            };
+        }
+
+        function renderXmlToolCallCard(innerRaw) {
+            const parsed = parseXmlStyleToolCall(innerRaw);
+            if (!parsed) {
+                return '';
+            }
+            const id = registerToolCallRaw(innerRaw);
+            const paramsHtml = parsed.params.length
+                ? parsed.params
+                    .map(function (p) {
+                        return (
+                            '<div class="tool-call-param">' +
+                            '<div class="tool-call-param-key">' + escapeHtml(p.key) + '</div>' +
+                            '<div class="tool-call-param-val">' + escapeHtml(p.value || '(空)') + '</div>' +
+                            '</div>'
+                        );
+                    })
+                    .join('')
+                : '<div class="tool-call-param"><div class="tool-call-param-key">参数</div><div class="tool-call-param-val">(无)</div></div>';
+            return (
+                '<div class="tool-call-card">' +
+                '<div class="tool-call-head">' +
+                '<span class="tool-call-name">🛠️ ' + escapeHtml(parsed.name) + '</span>' +
+                '<button type="button" class="btn-tool-raw-toggle" data-tool-raw-id="' + id + '">查看原始代码</button>' +
+                '<button type="button" class="btn-tool-raw-copy" data-tool-raw-id="' + id + '">复制原始代码</button>' +
+                '</div>' +
+                '<div class="tool-call-body">' + paramsHtml + '</div>' +
+                '<pre class="code-interpreter-raw" id="tool-raw-' + id + '" hidden>' + escapeHtml(innerRaw) + '</pre>' +
+                '</div>'
+            );
+        }
+
         function renderCodeInterpreterToolCallBlock(innerJsonStr) {
             let obj;
             try {
                 obj = JSON.parse(innerJsonStr);
             } catch (e) {
+                const xmlCard = renderXmlToolCallCard(innerJsonStr);
+                if (xmlCard) {
+                    return xmlCard;
+                }
                 return (
                     '<pre class="tool-call-parse-err">' + escapeHtml(innerJsonStr) + '</pre>'
                 );
@@ -2480,7 +3001,7 @@
                     continue;
                 }
                 if (p.type === 'text' && p.text != null) {
-                    if (role === 'assistant') {
+                    if (role === 'assistant' || role === 'tool') {
                         blocks.push(
                             '<div class="msg-part-text">' + renderSegmentWithToolCalls(String(p.text)) + '</div>'
                         );
@@ -2520,28 +3041,120 @@
         }
 
         // 提取问句的函数
+        function stripSystemReminder(text) {
+            var idx = text.indexOf('# system-reminder');
+            return idx >= 0 ? text.substring(0, idx) : text;
+        }
+
         function extractQuestion(content) {
-            // 优先检查 <NLU(仅供参考)>
-            const nluMatch = content.match(/^(.*?)<NLU\(仅供参考\)>/s);
+            var cleaned = stripSystemReminder(content);
+            var nluMatch = cleaned.match(/^(.*?)<NLU\(仅供参考\)>/s);
             if (nluMatch) {
                 return nluMatch[1].trim();
             }
-
-            // 其次检查时间标签（兼容 <当前系统时间> 与 <当前时间>）
-            const timeMatch = content.match(/^(.*?)<(?:当前系统时间|当前时间)>/s);
+            var timeMatch = cleaned.match(/^(.*?)<(?:当前系统时间|当前时间)>/s);
             if (timeMatch) {
                 return timeMatch[1].trim();
             }
+            var lines = cleaned.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+                var trimmed = lines[i].trim();
+                if (trimmed) {
+                    return trimmed.substring(0, 200);
+                }
+            }
+            return '';
+        }
 
-            // 如果都没有，返回第一行或前200个字符
-            const firstLine = content.split('\n')[0].trim();
-            return firstLine.substring(0, 200);
+        function getRewardContainer(rollout) {
+            if (!rollout || typeof rollout !== 'object') {
+                return null;
+            }
+            if (rollout.reward && typeof rollout.reward === 'object') {
+                return rollout.reward;
+            }
+            if (rollout.reward_info && typeof rollout.reward_info === 'object') {
+                return rollout;
+            }
+            return null;
+        }
+
+        function getRewardInfoFromRollout(rollout) {
+            const reward = getRewardContainer(rollout);
+            if (!reward || !reward.reward_info || typeof reward.reward_info !== 'object') {
+                return null;
+            }
+            return reward.reward_info;
         }
 
         function rolloutScore(r) {
             if (r == null) return 0;
             if (typeof r.score === 'number') return r.score;
-            return r.reward?.score ?? 0;
+            if (typeof r.reward_score === 'number') return r.reward_score;
+            if (typeof r?.reward?.score === 'number') return r.reward.score;
+            const info = getRewardInfoFromRollout(r);
+            if (info && typeof info.final_reward === 'number') {
+                return info.final_reward;
+            }
+            return 0;
+        }
+
+        function rolloutRunTimeSeconds(rollout) {
+            if (!rollout || typeof rollout !== 'object') {
+                return null;
+            }
+            if (typeof rollout.run_time === 'number' && Number.isFinite(rollout.run_time)) {
+                return rollout.run_time;
+            }
+            if (typeof rollout.runtime === 'number' && Number.isFinite(rollout.runtime)) {
+                return rollout.runtime;
+            }
+            const info = getRewardInfoFromRollout(rollout);
+            if (info && typeof info.reward_time === 'number' && Number.isFinite(info.reward_time)) {
+                return info.reward_time;
+            }
+            return null;
+        }
+
+        function extractQuestionFromRollout(rollout) {
+            if (!rollout || typeof rollout !== 'object') {
+                return '';
+            }
+            if (typeof rollout.question === 'string' && rollout.question.trim()) {
+                return rollout.question.trim();
+            }
+            const messages = Array.isArray(rollout.messages) ? rollout.messages : [];
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const msg = messages[i];
+                if (msg && msg.role === 'user') {
+                    const c = msg.content;
+                    let raw = contentToPlainTextForExtraction(c);
+                    if (!raw.trim()) {
+                        raw = typeof c === 'string' ? c : normalizeMsgContent(c);
+                    }
+                    const q = extractQuestion(raw || '');
+                    if (q) {
+                        return q;
+                    }
+                }
+            }
+            return '';
+        }
+
+        function rolloutDisplayId(rollout) {
+            if (!rollout || typeof rollout !== 'object') {
+                return 'N/A';
+            }
+            if (rollout.request_id != null && String(rollout.request_id).trim()) {
+                return String(rollout.request_id);
+            }
+            if (typeof rollout.__source_file === 'string' && rollout.__source_file) {
+                return rollout.__source_file.replace(/\.json$/i, '');
+            }
+            if (typeof rollout.file === 'string' && rollout.file) {
+                return rollout.file.replace(/\.json$/i, '');
+            }
+            return 'N/A';
         }
 
         const NLU_OPEN = '<NLU(仅供参考)>';
@@ -2930,7 +3543,7 @@
                             step.name
                     );
                     const res = await fetchWithTimeout(
-                        apiUrl('/api/summary?step=' + encodeURIComponent(step.name)),
+                        apiUrl('/api/summary?step=' + encodeURIComponent(step.name) + '&nocache=1'),
                         {},
                         FETCH_TIMEOUT_SUMMARY_MS
                     );
@@ -3165,13 +3778,15 @@
                             return sum + Math.pow(s - mean, 2);
                         }, 0) / scores.length;
                 }
+                var hasImage = rollouts.some(function (r) { return !!r.hasImage; });
                 return {
                     content: content,
                     rollouts: sortedRollouts,
                     count: sortedRollouts.length,
                     avgScore: parseFloat(avgScore.toFixed(4)),
                     variance: parseFloat(variance.toFixed(6)),
-                    isConstant: allEqual
+                    isConstant: allEqual,
+                    hasImage: hasImage
                 };
             });
         }
@@ -3190,14 +3805,24 @@
             clusteredData = sortQuestionClustersForDisplay(buildQuestionClustersFromSummaries(items));
         }
 
+        function contentHasImage(content) {
+            if (!Array.isArray(content)) return false;
+            for (var k = 0; k < content.length; k++) {
+                if (content[k] && typeof content[k] === 'object' && content[k].type === 'image_url') return true;
+            }
+            return false;
+        }
+
         function clusterData(rollouts) {
             let i = 0;
             const items = rollouts.map(rollout => {
                 const messages = rollout.messages || [];
                 let extractedQuestion = '';
+                let hasImage = false;
                 for (let j = messages.length - 1; j >= 0; j--) {
                     if (messages[j].role === 'user') {
                         const c = messages[j].content;
+                        hasImage = contentHasImage(c);
                         let raw = contentToPlainTextForExtraction(c);
                         if (!raw.trim()) {
                             raw =
@@ -3209,6 +3834,9 @@
                         break;
                     }
                 }
+                if (!extractedQuestion && typeof rollout.question === 'string') {
+                    extractedQuestion = rollout.question.trim().substring(0, 200);
+                }
                 if (!extractedQuestion) {
                     extractedQuestion = '未找到user内容';
                 }
@@ -3216,9 +3844,10 @@
                     file: 'local_' + (i++),
                     score: rolloutScore(rollout),
                     question: extractedQuestion,
+                    hasImage: hasImage,
                     request_id: rollout.request_id,
                     timestamp: rollout.timestamp,
-                    run_time: rollout.run_time,
+                    run_time: rolloutRunTimeSeconds(rollout),
                     _full: rollout
                 };
             });
@@ -3247,13 +3876,25 @@
             return idxs;
         }
 
+        let imageFilterEnabled = false;
+
         function getFilteredQuestionIndices(query) {
             const q = (query || '').trim().toLowerCase();
-            const baseOrder = getSortedClusterIndicesForCategory(questionCategoryFilter);
-            if (!q) {
-                return baseOrder;
+            let indices = getSortedClusterIndicesForCategory(questionCategoryFilter);
+            if (imageFilterEnabled) {
+                indices = indices.filter((i) => clusteredData[i].hasImage);
             }
-            return baseOrder.filter((i) => String(clusteredData[i].content).toLowerCase().includes(q));
+            if (q) {
+                indices = indices.filter((i) => String(clusteredData[i].content).toLowerCase().includes(q));
+            }
+            return indices;
+        }
+
+        function toggleImageFilter() {
+            imageFilterEnabled = !imageFilterEnabled;
+            var btn = document.getElementById('btnImageFilter');
+            if (btn) btn.classList.toggle('active', imageFilterEnabled);
+            applyQuestionFilter();
         }
 
         function setQuestionCategoryFilter(filter) {
@@ -3323,12 +3964,17 @@
                     }
                     prevCat = cat;
                 }
+                var trHtml = '';
+                if (translateEnabled && !isChinese(c.content) && translateCache.has(c.content)) {
+                    trHtml = '<div class="question-translated">译: ' + escapeHtml(translateCache.get(c.content)) + '</div>';
+                }
                 blocks.push(`
                 <div class="question-item ${idx === currentClusterIndex ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
                     <div class="question-item-top">
-                        <div class="question-text">${escapeHtml(c.content)}</div>
+                        <div class="question-text">${c.hasImage ? '<span class="question-image-badge">🖼️</span> ' : ''}${escapeHtml(c.content)}</div>
                         <button type="button" class="question-copy-btn" title="复制该问句全文" aria-label="复制问句" tabindex="0" onclick="event.stopPropagation(); void copyClusterQuestion(${idx}, this);">复制</button>
                     </div>
+                    ${trHtml}
                     <div class="question-meta">
                         <span class="question-badge">样本: ${c.count}</span>
                         <span class="question-badge">平均: ${c.avgScore.toFixed(3)}</span>
@@ -3366,6 +4012,7 @@
             const hasQuery = !!(q && q.trim());
             updateQuestionListTitle(indices.length, total, hasQuery);
             listEl.innerHTML = renderQuestionListItems(indices);
+            if (translateEnabled) translateAllVisibleQuestions();
 
             if (!indices.length) {
                 currentClusterIndex = -1;
@@ -3423,9 +4070,15 @@
             const currentStep = currentStepIndex >= 0 ? stepsData[currentStepIndex] : null;
             const constantCount = clusteredData.filter(c => c.isConstant).length;
             const variableCount = clusteredData.length - constantCount;
+            const imageCount = clusteredData.filter(c => c.hasImage).length;
 
             document.getElementById('stats').innerHTML = `
                 ${currentStep ? `<div class="stat-item"><strong>当前Step:</strong> ${currentStep.name}</div>` : ''}
+                ${
+                    currentStep
+                        ? `<div class="stat-item stat-item-action"><button type="button" class="btn-deduction-export" id="btnExportAllDeductionReports" onclick="exportAllStepDeductions()">📄 导出 Deductions</button></div>`
+                        : ''
+                }
                 <div class="stat-item"><strong>总样本数:</strong> ${totalRollouts}</div>
                 <div class="stat-item"><strong>聚类数:</strong> ${totalClusters}</div>
                 <div class="stat-item"><strong>恒定分数:</strong> ${constantCount} <small>(方差=0)</small></div>
@@ -3443,9 +4096,11 @@
                     <div class="sidebar">
                         <div class="sidebar-header">
                             📋 <span id="questionListTitle">问句列表 (${totalClusters})</span>
-                            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+                            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                                 <span class="variance-filter-chip var-chip" data-filter="variable" role="button" tabindex="0" title="仅显示分数有变化的问句，按方差从大到小" onclick="setQuestionCategoryFilter('variable')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('variable');}">变化 · ${variableCount} 问句</span>
                                 <span class="variance-filter-chip const-chip" data-filter="constant" role="button" tabindex="0" title="仅显示分数恒定的问句；方差相同时按平均分从高到低" onclick="setQuestionCategoryFilter('constant')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('constant');}">恒定 · ${constantCount} 问句</span>
+                                ${imageCount ? `<button type="button" class="btn-translate-toggle${imageFilterEnabled ? ' active' : ''}" id="btnImageFilter" title="仅显示含图片的问句" onclick="toggleImageFilter()">🖼️ 图片 · ${imageCount}</button>` : ''}
+                                <button type="button" class="btn-translate-toggle${translateEnabled ? ' active' : ''}" id="btnTranslateToggle" title="自动将非中文问句翻译为中文" onclick="toggleTranslate()">🌐 翻译</button>
                             </div>
                             <div style="margin-top:8px;font-size:12px;color:#86868b;line-height:1.45;">
                                 下方按「方差≠0 / 方差=0」分组展示，与顶部「聚类数 / 恒定分数」统计一致。
@@ -3462,6 +4117,7 @@
                             <div class="detail-panel-header-row">
                                 <div class="detail-panel-title">📝 Rollout 详细内容</div>
                                 <div class="detail-json-toolbar-inline" id="detailJsonToolbar" style="display: none;" aria-hidden="true">
+                                    <button type="button" class="btn-json-toggle" id="btnTranslateDetail" onclick="translateDetailMessages()">🌐 翻译内容</button>
                                     <button type="button" class="btn-json-toggle" id="btnToggleRawJson" onclick="toggleDetailRawJson()">查看原始 JSON</button>
                                     <button type="button" class="btn-json-toggle" id="btnCopyRawJson" onclick="copyDetailRawJson()">复制 JSON</button>
                                 </div>
@@ -3488,6 +4144,7 @@
                 listEl.innerHTML = renderQuestionListItems(getFilteredQuestionIndices(''));
             }
             syncVarianceChipActive();
+            if (translateEnabled) translateAllVisibleQuestions();
         }
 
         function selectQuestion(index) {
@@ -3551,6 +4208,8 @@
 
         function renderRolloutItem(rollout, clusterIdx, rolloutIdx, maxScore, minScore) {
             const score = rolloutScore(rollout);
+            const runTimeSec = rolloutRunTimeSeconds(rollout);
+            const displayId = rolloutDisplayId(rollout);
             const delta = score - maxScore;
             const deltaStr = delta === 0 ? '与最高相同' : (delta >= 0 ? '' : '较最高 ' + delta.toFixed(3));
             const range = maxScore - minScore;
@@ -3567,8 +4226,8 @@
                             </div>
                         </div>
                         <div class="rollout-meta">
-                            <div><strong>ID</strong> ${rollout.request_id?.substring(0, 8) || 'N/A'}</div>
-                            <div><strong>时间</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'} · <strong>运行</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                            <div><strong>ID</strong> ${escapeHtml(displayId.length > 20 ? displayId.substring(0, 20) + '…' : displayId)}</div>
+                            <div><strong>时间</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'} · <strong>运行</strong> ${runTimeSec != null ? runTimeSec.toFixed(2) : 'N/A'}s</div>
                         </div>
                     </div>
                 </div>
@@ -3655,7 +4314,14 @@
                         (full && (full.error || full.message)) || bodyText || r.statusText || '加载失败';
                     throw new Error(msg);
                 }
-                slot._full = full || {};
+                slot._full = Object.assign({}, full || {}, { __source_file: slot.file });
+                const rt = rolloutRunTimeSeconds(slot._full);
+                if (rt != null) {
+                    slot.run_time = rt;
+                }
+                if (slot._full.request_id != null && String(slot._full.request_id).trim()) {
+                    slot.request_id = String(slot._full.request_id);
+                }
                 detailEl.innerHTML = renderRolloutDetail(slot._full);
                 bindCollapseEvents();
                 finalizeRolloutDetailView();
@@ -3708,6 +4374,35 @@
         function finalizeRolloutDetailView() {
             setDetailJsonToolbarVisible(true);
             resetDetailRawJsonPanel();
+            void translateVisibleDeductionItems();
+        }
+
+        async function translateVisibleDeductionItems() {
+            const nodes = Array.from(document.querySelectorAll('.eval-item-tr[data-deduction-tr-id]'));
+            if (!nodes.length) {
+                return;
+            }
+            const tasks = nodes.map(async function (node) {
+                const id = String(node.getAttribute('data-deduction-tr-id') || '');
+                const text = deductionTranslateStore[id];
+                if (!text || isChinese(text)) {
+                    node.hidden = true;
+                    return;
+                }
+                let translated = '';
+                try {
+                    translated = await translateText(text);
+                } catch {
+                    translated = '';
+                }
+                if (translated && translated !== text) {
+                    node.textContent = '译: ' + translated;
+                    node.hidden = false;
+                } else {
+                    node.hidden = true;
+                }
+            });
+            await Promise.allSettled(tasks);
         }
 
         function jsonPreviewObject(o) {
@@ -3871,6 +4566,618 @@
             }
         }
 
+        function parseRewardResponseObject(rr) {
+            if (rr == null) {
+                return null;
+            }
+            if (typeof rr === 'object' && !Array.isArray(rr)) {
+                return rr;
+            }
+            if (typeof rr === 'string') {
+                try {
+                    const o = JSON.parse(rr);
+                    return o && typeof o === 'object' && !Array.isArray(o) ? o : null;
+                } catch {
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function getRawOutputsFromRollout(rollout) {
+            const info = getRewardInfoFromRollout(rollout);
+            const rr = parseRewardResponseObject(info?.reward_response);
+            const ro = rr && rr.raw_outputs;
+            if (!ro || typeof ro !== 'object') {
+                return null;
+            }
+            return ro;
+        }
+
+        /** 仅解析 `</redacted_thinking>` 之后的正文，避免思维链内重复的 `<deductions>` */
+        function sliceAfterRedactedThinking(raw) {
+            const s = raw == null ? '' : String(raw);
+            const tag = '</redacted_thinking>';
+            const i = s.indexOf(tag);
+            return i < 0 ? s : s.substring(i + tag.length);
+        }
+
+        function sliceAfterThinking(raw) {
+            const s = raw == null ? '' : String(raw);
+            const tag = '</think>';
+            const i = s.indexOf(tag);
+            return i < 0 ? s : s.substring(i + tag.length);
+        }
+
+        function normalizePenaltyFieldKey(key) {
+            return String(key || '')
+                .toLowerCase()
+                .replace(/[\s_-]+/g, ' ')
+                .trim();
+        }
+
+        /**
+         * 从单段文本中提取 <deductions>...</deductions> 块（仅内部文本）。
+         * 若存在多个块（模型常先输出简略版再输出详细版），只保留最后一个，避免界面重复。
+         */
+        function extractDeductionsInners(text) {
+            const s = sliceAfterRedactedThinking(sliceAfterThinking(text));
+            const re = /<deductions>([\s\S]*?)<\/deductions>/gi;
+            const out = [];
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                out.push(m[1].trim());
+            }
+            if (out.length <= 1) {
+                return out;
+            }
+            return [out[out.length - 1]];
+        }
+
+        function extractEvaluationInners(text) {
+            const s = sliceAfterRedactedThinking(sliceAfterThinking(text));
+            const re = /<evaluation>([\s\S]*?)<\/evaluation>/gi;
+            const out = [];
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                out.push(m[1].trim());
+            }
+            if (out.length <= 1) {
+                return out;
+            }
+            return [out[out.length - 1]];
+        }
+
+        /** 从单段文本中提取所有 <deductions>...</deductions> 块（含标签） */
+        function extractDeductionsBlocks(text) {
+            return extractDeductionsInners(text).map(function (inner) {
+                return '<deductions>' + inner + '</deductions>';
+            });
+        }
+
+        function extractEvaluationBlocks(text) {
+            return extractEvaluationInners(text).map(function (inner) {
+                return '<evaluation>' + inner + '</evaluation>';
+            });
+        }
+
+        /**
+         * 解析单个 deductions 块内的 `- Key: value` 行（Evidence 等字段可续行）。
+         */
+        function parseDeductionBlockFields(inner) {
+            const fields = {};
+            if (!inner) {
+                return fields;
+            }
+            const lines = inner.split(/\r?\n/);
+            let currentKey = null;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const m = line.match(/^\s*-\s*(.+?)\s*:\s*(.*)$/);
+                if (m) {
+                    currentKey = normalizePenaltyFieldKey(m[1].trim());
+                    fields[currentKey] = m[2].trim();
+                } else if (currentKey && line.trim() !== '') {
+                    fields[currentKey] =
+                        (fields[currentKey] ? fields[currentKey] + ' ' : '') + line.trim();
+                }
+            }
+            return fields;
+        }
+
+        function parseEvaluationBlockFields(inner) {
+            const fields = {};
+            if (!inner) {
+                return fields;
+            }
+            const re = /<([a-zA-Z_][\w\-]*)>([\s\S]*?)<\/\1>/g;
+            let m;
+            while ((m = re.exec(inner)) !== null) {
+                const k = normalizePenaltyFieldKey(m[1]);
+                const v = String(m[2] || '')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (v) {
+                    fields[k] = v;
+                }
+            }
+            return fields;
+        }
+
+        function prettyFormatXml(xml) {
+            const cleaned = String(xml == null ? '' : xml).replace(/>\s+</g, '><').trim();
+            if (!cleaned) {
+                return '';
+            }
+            const tokens = cleaned.replace(/</g, '\n<').split('\n').filter(Boolean);
+            let depth = 0;
+            const out = [];
+            for (let i = 0; i < tokens.length; i++) {
+                const tok = tokens[i].trim();
+                if (!tok) continue;
+                if (/^<\//.test(tok)) {
+                    depth = Math.max(0, depth - 1);
+                }
+                out.push('  '.repeat(depth) + tok);
+                if (/^<[^!?/][^>]*[^/]>$/.test(tok) && !/<\/[^>]+>$/.test(tok)) {
+                    depth++;
+                }
+            }
+            return out.join('\n');
+        }
+
+        function parseXmlAttrs(attrText) {
+            const attrs = {};
+            if (!attrText) return attrs;
+            const re = /([a-zA-Z_][\w-]*)\s*=\s*"([^"]*)"/g;
+            let m;
+            while ((m = re.exec(attrText)) !== null) {
+                attrs[m[1]] = m[2];
+            }
+            return attrs;
+        }
+
+        function parseEvaluationXmlSummary(xmlInner) {
+            const full = '<evaluation>' + String(xmlInner || '') + '</evaluation>';
+            const out = {
+                total_deductions: '',
+                raw_score: '',
+                score: '',
+                dimension_deductions: {},
+                items: []
+            };
+
+            const dimMatch = full.match(/<dimension_deductions>([\s\S]*?)<\/dimension_deductions>/i);
+            if (dimMatch) {
+                const dimRe = /<([A-Za-z0-9_]+)>\s*([^<]*)\s*<\/\1>/g;
+                let d;
+                while ((d = dimRe.exec(dimMatch[1])) !== null) {
+                    out.dimension_deductions[d[1]] = d[2];
+                }
+            }
+
+            const itemRe = /<item\b([^>]*)\/>/gi;
+            let it;
+            while ((it = itemRe.exec(full)) !== null) {
+                out.items.push(parseXmlAttrs(it[1]));
+            }
+
+            const total = full.match(/<total_deductions>\s*([^<]*)\s*<\/total_deductions>/i);
+            const raw = full.match(/<raw_score>\s*([^<]*)\s*<\/raw_score>/i);
+            const score = full.match(/<score>\s*([^<]*)\s*<\/score>/i);
+            out.total_deductions = total ? total[1] : '';
+            out.raw_score = raw ? raw[1] : '';
+            out.score = score ? score[1] : '';
+            return out;
+        }
+
+        /**
+         * 根据 raw_outputs 中 trajectory / answer 的 <deductions> 生成中文 Markdown 扣分报告。
+         */
+        function buildDeductionSummaryReport(rollout) {
+            const ro = getRawOutputsFromRollout(rollout);
+            if (!ro) {
+                return '';
+            }
+            const trajDedInners = extractDeductionsInners(ro.trajectory);
+            const ansDedInners = extractDeductionsInners(ro.answer);
+            const trajEvalInners = extractEvaluationInners(ro.trajectory);
+            const ansEvalInners = extractEvaluationInners(ro.answer);
+            const trajBlocks =
+                trajDedInners.length > 0
+                    ? trajDedInners.map(function (inner) {
+                          return { kind: 'deductions', fields: parseDeductionBlockFields(inner) };
+                      })
+                    : trajEvalInners.map(function (inner) {
+                          return { kind: 'evaluation', fields: parseEvaluationBlockFields(inner) };
+                      });
+            const ansBlocks =
+                ansDedInners.length > 0
+                    ? ansDedInners.map(function (inner) {
+                          return { kind: 'deductions', fields: parseDeductionBlockFields(inner) };
+                      })
+                    : ansEvalInners.map(function (inner) {
+                          return { kind: 'evaluation', fields: parseEvaluationBlockFields(inner) };
+                      });
+            if (trajBlocks.length === 0 && ansBlocks.length === 0) {
+                return '';
+            }
+
+            const info = getRewardInfoFromRollout(rollout);
+            const rr = parseRewardResponseObject(info?.reward_response);
+            const scores = rr && rr.scores && typeof rr.scores === 'object' ? rr.scores : null;
+            const lines = [];
+
+            lines.push('# Rollout 扣分报告');
+            lines.push('');
+            lines.push('## 概况');
+            lines.push('');
+            if (rollout.question != null && String(rollout.question).trim() !== '') {
+                lines.push('- **用户问题**：' + String(rollout.question).trim());
+            }
+            if (rollout.request_id != null && String(rollout.request_id).trim() !== '') {
+                lines.push('- **Request ID**：' + String(rollout.request_id).trim());
+            }
+            if (scores) {
+                if (scores.trajectory != null) {
+                    lines.push('- **轨迹评分（trajectory）**：' + scores.trajectory);
+                }
+                if (scores.answer != null) {
+                    lines.push('- **回答评分（answer）**：' + scores.answer);
+                }
+            }
+            const fr = info?.final_reward;
+            if (fr != null) {
+                lines.push(
+                    '- **综合 reward**：' +
+                        (typeof fr === 'number' ? fr.toFixed(3) : String(fr))
+                );
+            }
+            lines.push('');
+
+            const fieldLabels = [
+                ['dimension', '扣分维度'],
+                ['rule', '触犯规则'],
+                ['evidence', '证据与说明'],
+                ['points', '本条扣分'],
+                ['total deductions', '累计扣分（本节）'],
+                ['raw score', '折算说明'],
+                ['final score', '本节最终得分']
+            ];
+            const knownEn = new Set(fieldLabels.map(function (x) {
+                return x[0];
+            }));
+
+            function emitStep(sectionZh, idx, fields, kind) {
+                lines.push(
+                    '### ' + sectionZh + ' · 扣分项 ' + idx + (kind === 'evaluation' ? '（evaluation）' : '')
+                );
+                lines.push('');
+                for (let j = 0; j < fieldLabels.length; j++) {
+                    const en = fieldLabels[j][0];
+                    const zh = fieldLabels[j][1];
+                    const v = fields[en];
+                    if (v != null && String(v).trim() !== '') {
+                        lines.push('- **' + zh + '**（' + en + '）：' + String(v).trim());
+                    }
+                }
+                const keys = Object.keys(fields);
+                for (let k = 0; k < keys.length; k++) {
+                    const key = keys[k];
+                    if (
+                        !knownEn.has(normalizePenaltyFieldKey(key)) &&
+                        fields[key] != null &&
+                        String(fields[key]).trim() !== ''
+                    ) {
+                        lines.push('- **' + key + '**：' + String(fields[key]).trim());
+                    }
+                }
+                lines.push('');
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 一、轨迹（Trajectory）扣分明细');
+            lines.push('');
+            if (trajBlocks.length === 0) {
+                lines.push('*（本段无 `<deductions>` / `<evaluation>` 记录）*');
+                lines.push('');
+            } else {
+                for (let t = 0; t < trajBlocks.length; t++) {
+                    emitStep('轨迹', t + 1, trajBlocks[t].fields, trajBlocks[t].kind);
+                }
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 二、最终回答（Answer）扣分明细');
+            lines.push('');
+            if (ansBlocks.length === 0) {
+                lines.push('*（本段无 `<deductions>` / `<evaluation>` 记录）*');
+                lines.push('');
+            } else {
+                for (let a = 0; a < ansBlocks.length; a++) {
+                    emitStep('回答', a + 1, ansBlocks[a].fields, ansBlocks[a].kind);
+                }
+            }
+
+            function shortRule(r) {
+                if (r == null || r === '') {
+                    return '';
+                }
+                let t = String(r).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+                if (t.length > 100) {
+                    t = t.substring(0, 97) + '...';
+                }
+                return t;
+            }
+
+            lines.push('---');
+            lines.push('');
+            lines.push('## 三、扣分维度与规则汇总表');
+            lines.push('');
+            lines.push('| 环节 | 序号 | 扣分维度 | 触犯规则（摘要） | 本条扣分 |');
+            lines.push('|------|------|----------|------------------|----------|');
+            for (let t = 0; t < trajBlocks.length; t++) {
+                const f = trajBlocks[t].fields;
+                lines.push(
+                    '| 轨迹 | ' +
+                        (t + 1) +
+                        ' | ' +
+                        (f['dimension'] || '').replace(/\|/g, '\\|') +
+                        ' | ' +
+                        shortRule(f['rule']) +
+                        ' | ' +
+                        (f['points'] || '').replace(/\|/g, '\\|') +
+                        ' |'
+                );
+            }
+            for (let a = 0; a < ansBlocks.length; a++) {
+                const f = ansBlocks[a].fields;
+                lines.push(
+                    '| 回答 | ' +
+                        (a + 1) +
+                        ' | ' +
+                        (f['dimension'] || '').replace(/\|/g, '\\|') +
+                        ' | ' +
+                        shortRule(f['rule']) +
+                        ' | ' +
+                        (f['points'] || '').replace(/\|/g, '\\|') +
+                        ' |'
+                );
+            }
+            lines.push('');
+            lines.push(
+                '*本报告由 Viewer 根据 `reward_response.raw_outputs` 中的 `<deductions>` / `<evaluation>` 自动解析生成。*'
+            );
+            lines.push('');
+
+            return lines.join('\n');
+        }
+
+        async function exportTextFileWithClipboardFallback(text, filename, btn, baseLabel, okFileLabel, okClipLabel) {
+            okFileLabel = okFileLabel || '已下载';
+            okClipLabel = okClipLabel || '已复制到剪贴板';
+            try {
+                const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                if (btn) {
+                    btn.textContent = okFileLabel;
+                    setTimeout(function () {
+                        btn.textContent = baseLabel;
+                    }, 1600);
+                }
+            } catch (e1) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    if (btn) {
+                        btn.textContent = okClipLabel;
+                        setTimeout(function () {
+                            btn.textContent = baseLabel;
+                        }, 1600);
+                    }
+                } catch (e2) {
+                    alert('导出失败：无法保存文件且无法写入剪贴板。');
+                }
+            }
+        }
+
+        function buildDeductionsExportText(rollout) {
+            const ro = getRawOutputsFromRollout(rollout);
+            if (!ro) {
+                return '';
+            }
+            const trajDedBlocks = extractDeductionsBlocks(ro.trajectory);
+            const ansDedBlocks = extractDeductionsBlocks(ro.answer);
+            const trajEvalBlocks = extractEvaluationBlocks(ro.trajectory);
+            const ansEvalBlocks = extractEvaluationBlocks(ro.answer);
+            const trajBlocks = trajDedBlocks.length > 0 ? trajDedBlocks : trajEvalBlocks;
+            const ansBlocks = ansDedBlocks.length > 0 ? ansDedBlocks : ansEvalBlocks;
+            if (trajBlocks.length === 0 && ansBlocks.length === 0) {
+                return '';
+            }
+            const lines = [];
+            lines.push(
+                'raw_outputs.trajectory — ' + (trajDedBlocks.length > 0 ? '<deductions>' : '<evaluation>')
+            );
+            lines.push('');
+            trajBlocks.forEach(function (b, i) {
+                if (trajBlocks.length > 1) {
+                    lines.push('<!-- block ' + (i + 1) + ' -->');
+                }
+                lines.push(b);
+                lines.push('');
+            });
+            lines.push('---');
+            lines.push('');
+            lines.push('raw_outputs.answer — ' + (ansDedBlocks.length > 0 ? '<deductions>' : '<evaluation>'));
+            lines.push('');
+            ansBlocks.forEach(function (b, i) {
+                if (ansBlocks.length > 1) {
+                    lines.push('<!-- block ' + (i + 1) + ' -->');
+                }
+                lines.push(b);
+                lines.push('');
+            });
+            return lines.join('\n').trim() + '\n';
+        }
+
+        async function exportDetailDeductions() {
+            if (!detailRolloutPayload) {
+                return;
+            }
+            const text = buildDeductionsExportText(detailRolloutPayload);
+            if (!text) {
+                alert('当前 Rollout 未找到 raw_outputs，或 trajectory/answer 中不含 <deductions>/<evaluation> 标签。');
+                return;
+            }
+            const btn = document.getElementById('btnExportDeductions');
+            const baseLabel = '导出 deductions';
+            const id =
+                detailRolloutPayload.request_id != null && String(detailRolloutPayload.request_id)
+                    ? String(detailRolloutPayload.request_id).replace(/[^\w.-]+/g, '_')
+                    : 'rollout';
+            const filename = 'deductions_' + id + '.txt';
+            await exportTextFileWithClipboardFallback(text, filename, btn, baseLabel);
+        }
+
+        async function exportDeductionSummaryReport() {
+            if (!detailRolloutPayload) {
+                return;
+            }
+            const text = buildDeductionSummaryReport(detailRolloutPayload);
+            if (!text) {
+                alert('当前 Rollout 未找到 raw_outputs，或 trajectory/answer 中不含 <deductions>/<evaluation> 标签。');
+                return;
+            }
+            const btn = document.getElementById('btnExportDeductionReport');
+            const baseLabel = '导出扣分报告';
+            const id =
+                detailRolloutPayload.request_id != null && String(detailRolloutPayload.request_id)
+                    ? String(detailRolloutPayload.request_id).replace(/[^\w.-]+/g, '_')
+                    : 'rollout';
+            const filename = 'deduction_report_' + id + '.md';
+            await exportTextFileWithClipboardFallback(text, filename, btn, baseLabel);
+        }
+
+        /**
+         * 调用 /api/step-deduction-reports（默认 mode=deductions），合并当前 Step 下各 json 的
+         * raw_outputs 中 `<deductions>` 原文，便于后续总结分析（与单条「导出 deductions」格式一致）。
+         * 如需完整 Markdown 扣分报告，可请求 API 时加 &mode=report（本按钮未使用）。
+         */
+        async function exportAllStepDeductions() {
+            if (currentStepIndex < 0 || !stepsData[currentStepIndex]) {
+                alert('请先加载并选中一个 Step（左侧列表进入某 step 后，顶部应显示「当前 Step」）。');
+                return;
+            }
+            const step = stepsData[currentStepIndex];
+            const btn = document.getElementById('btnExportAllDeductionReports');
+            const baseLabel = '导出本 Step 全部 deductions';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '正在生成…';
+            }
+            try {
+                const r = await fetchWithTimeout(
+                    apiUrl(
+                        '/api/step-deduction-reports?step=' +
+                            encodeURIComponent(step.name) +
+                            '&mode=deductions'
+                    ),
+                    {},
+                    FETCH_TIMEOUT_STEP_DEDUCTIONS_MS
+                );
+                let data = null;
+                try {
+                    data = await r.json();
+                } catch {
+                    data = null;
+                }
+                if (!r.ok) {
+                    const msg =
+                        (data && (data.error || data.message)) || r.statusText || '请求失败';
+                    throw new Error(msg);
+                }
+                const items = (data && data.items) || [];
+                const withDed = items.filter(function (x) {
+                    return x && x.text;
+                });
+                const parseErrors = items.filter(function (x) {
+                    return x && x.parseError;
+                }).length;
+                if (withDed.length === 0) {
+                    throw new Error(
+                        '本 Step 下 ' +
+                            items.length +
+                            ' 个 JSON 中均未找到 <deductions>（' +
+                            parseErrors +
+                            ' 个解析失败）。'
+                    );
+                }
+                const parts = [];
+                parts.push('# 批量 deductions 导出（raw_outputs）');
+                parts.push('');
+                parts.push('- **Step**：`' + step.name + '`');
+                parts.push('- **生成时间**：' + new Date().toISOString());
+                parts.push('- **JSON 文件总数**：' + items.length);
+                parts.push('- **含 deductions**：' + withDed.length);
+                if (parseErrors > 0) {
+                    parts.push('- **JSON 解析失败**：' + parseErrors);
+                }
+                parts.push('');
+                parts.push('---');
+                parts.push('');
+                for (let i = 0; i < withDed.length; i++) {
+                    const it = withDed[i];
+                    parts.push('## 源文件：`' + it.file + '`');
+                    parts.push('');
+                    if (it.meta) {
+                        var m = it.meta;
+                        parts.push('- **question**：' + (m.question || 'N/A'));
+                        parts.push('- **request_id**：' + (m.request_id || 'N/A'));
+                        parts.push(
+                            '- **score**：' + (m.score != null ? m.score : 'N/A') +
+                            '　|　**trajectory**：' + (m.trajectory_score != null ? m.trajectory_score : 'N/A') +
+                            '　|　**answer**：' + (m.answer_score != null ? m.answer_score : 'N/A') +
+                            '　|　**final_reward**：' + (m.final_reward != null ? m.final_reward : 'N/A')
+                        );
+                        parts.push('');
+                    }
+                    parts.push(it.text);
+                    parts.push('');
+                    parts.push('---');
+                    parts.push('');
+                }
+                const text = parts.join('\n');
+                const filename =
+                    'deductions_' + String(step.name).replace(/[^\w.-]+/g, '_') + '_all.txt';
+                await exportTextFileWithClipboardFallback(text, filename, btn, baseLabel);
+            } catch (err) {
+                if (btn) {
+                    btn.textContent = baseLabel;
+                }
+                const msg = err instanceof Error ? err.message : String(err);
+                if (err && err.name === 'AbortError') {
+                    alert('批量导出超时，请重试或减小 Step 内 json 数量。');
+                } else {
+                    alert(msg);
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                }
+            }
+        }
+
         function assistantTextHasCodeInterpreterCall(text) {
             if (text == null || text === '') return false;
             const s = typeof text === 'string' ? text : String(text);
@@ -3915,7 +5222,7 @@
             detailRolloutPayload = rollout;
             return `
                 ${renderMessages(rollout.messages)}
-                ${renderRewardInfo(rollout.reward)}
+                ${renderRewardInfo(rollout)}
                 ${renderMetadata(rollout)}
                 <div id="detailRawJsonPanel" class="detail-raw-json" style="display: none;">
                     <div class="detail-raw-json-head">原始 JSON（点击节点标题展开/折叠；复制仍使用完整 JSON 文本）</div>
@@ -3980,6 +5287,8 @@
                                 bodyHtml = isLastAssistant
                                     ? renderAssistantContent(str)
                                     : renderSegmentWithToolCalls(str);
+                            } else if (msg.role === 'tool') {
+                                bodyHtml = renderSegmentWithToolCalls(str);
                             } else {
                                 bodyHtml = isLastAssistant
                                     ? renderAssistantContent(str)
@@ -4088,6 +5397,53 @@
             }
             html += '</tbody></table>';
             return html;
+        }
+
+        function parseFetchWebTableRows(raw) {
+            const rows = [];
+            const re = /\|([^|\n]+)\|([\s\S]*?)\|(https?:\/\/[^\s|]+)\|/gi;
+            let m;
+            while ((m = re.exec(raw)) !== null) {
+                rows.push({
+                    title: m[1].trim(),
+                    content: m[2].trim(),
+                    url: m[3].trim()
+                });
+            }
+            return rows;
+        }
+
+        function buildFetchWebTableHtml(rows) {
+            if (!rows.length) return '';
+            let html = '<table><thead><tr>';
+            html += '<th style="text-align:left">title</th>';
+            html += '<th style="text-align:left">content</th>';
+            html += '<th style="text-align:left">url</th>';
+            html += '</tr></thead><tbody>';
+            rows.forEach(function (row) {
+                html += '<tr>';
+                html += '<td style="text-align:left">' + escapeHtml(row.title) + '</td>';
+                html += '<td style="text-align:left">' + escapeHtml(row.content).replace(/\r?\n/g, '<br>') + '</td>';
+                html += '<td style="text-align:left"><a href="' + escapeHtml(row.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(row.url) + '</a></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function extractFetchWebTables(text) {
+            const tables = [];
+            const re = /\|title\|content\|url\|\r?\n\|--\|--\|--\|\r?\n([\s\S]*?)(?=\n{2,}|$)/gi;
+            const out = String(text || '').replace(re, function (_full, body) {
+                const rows = parseFetchWebTableRows(body);
+                if (!rows.length) {
+                    return _full;
+                }
+                const id = tables.length;
+                tables.push(buildFetchWebTableHtml(rows));
+                return '\n\n<<<FETCH_TABLE_' + id + '>>>\n\n';
+            });
+            return { text: out, tables };
         }
 
         /** 抽出 GFM 管道表格，避免被段落逻辑拆散 */
@@ -4279,13 +5635,25 @@
 
         // 简单的markdown渲染器（含有序列表、脚注引用、内嵌 div HTML）
         function simpleMarkdown(text) {
-            const extracted = extractRawHtmlPlaceholders(text);
-            const piped = extractPipeTables(extracted.text);
+            const mdFences = [];
+            let t = String(text ?? '');
+            t = t.replace(/```(?:markdown|md)\r?\n([\s\S]*?)```/gi, function (_, inner) {
+                const id = mdFences.length;
+                mdFences.push(inner);
+                return '\n\nMDFENCEPLACEHOLDER_' + id + '\n\n';
+            });
+            const extracted = extractRawHtmlPlaceholders(t);
+            const fetched = extractFetchWebTables(extracted.text);
+            const piped = extractPipeTables(fetched.text);
             const withPlaceholders = replaceHorizontalRules(piped.text);
+            const fetchTables = fetched.tables;
             const tables = piped.tables;
             const rawHtmlBlocks = extracted.blocks;
 
             let html = escapeHtml(withPlaceholders);
+            for (let f = 0; f < fetchTables.length; f++) {
+                html = html.replace(`&lt;&lt;&lt;FETCH_TABLE_${f}&gt;&gt;&gt;`, fetchTables[f]);
+            }
             for (let t = 0; t < tables.length; t++) {
                 html = html.replace(`&lt;&lt;&lt;TABLE_${t}&gt;&gt;&gt;`, tables[t]);
             }
@@ -4313,14 +5681,28 @@
 
             html = convertMarkdownLists(html);
 
-            // 段落
+            // 保护 <pre> 块，避免内部换行被转为 <br>
+            var codeSlots = [];
+            html = html.replace(/<pre><code>([\s\S]*?)<\/code><\/pre>/g, function (m) {
+                codeSlots.push(m);
+                return '\x00CODE_' + (codeSlots.length - 1) + '\x00';
+            });
+
+            // 段落 + 单换行转 <br>
             html = html.replace(/\n\n/g, '</p><p>');
+            html = html.replace(/\n/g, '<br>\n');
             html = '<p>' + html + '</p>';
+
+            // 还原 <pre> 块
+            for (var ci = 0; ci < codeSlots.length; ci++) {
+                html = html.split('\x00CODE_' + ci + '\x00').join(codeSlots[ci]);
+            }
 
             // 清理空段落
             html = html.replace(/<p><\/p>/g, '');
             html = html.replace(/<p>\s*<(h[1-5]|ul|ol|pre|table)/g, '<$1');
             html = html.replace(/<\/(h[1-5]|ul|ol|pre|table)>\s*<\/p>/g, '</$1>');
+            html = html.replace(/<br>\s*<(h[1-5]|ul|ol|li|pre|table|\/li|\/ul|\/ol)/gi, '<$1');
             html = html.replace(/<p>\s*<hr\s*>\s*<\/p>/gi, '<hr>');
             html = html.replace(/<p>\s*<hr\s*>/gi, '<hr>');
             html = html.replace(/<hr\s*>\s*<\/p>/gi, '<hr>');
@@ -4334,21 +5716,174 @@
                 html = html.split(ph).join(wrapped);
             }
 
+            for (let fi = 0; fi < mdFences.length; fi++) {
+                const innerHtml = simpleMarkdown(mdFences[fi]);
+                html = html.split('MDFENCEPLACEHOLDER_' + fi).join(
+                    '<div class="markdown-content markdown-md-fence">' + innerHtml + '</div>'
+                );
+            }
+
             return html;
         }
 
-        function renderRewardInfo(reward) {
-            if (!reward || !reward.reward_info) return '';
-
-            const info = reward.reward_info;
+        function renderRewardInfo(rollout) {
+            const reward = getRewardContainer(rollout);
+            const info = getRewardInfoFromRollout(rollout);
+            if (!reward || !info) return '';
             const ruleRewards = info.rule_reward_info || {};
+            const topScore = typeof rollout?.reward_score === 'number'
+                ? rollout.reward_score
+                : (typeof reward.score === 'number' ? reward.score : null);
+            const zhLabel = {
+                dimension: '扣分维度',
+                rule: '触犯规则',
+                evidence: '证据与说明',
+                points: '本条扣分',
+                'total deductions': '累计扣分',
+                'raw score': '原始分',
+                'final score': '最终分',
+                reason: '原因',
+                verdict: '结论',
+                summary: '摘要'
+            };
+
+            function renderEvaluationFields(fields) {
+                const keys = Object.keys(fields || {});
+                if (!keys.length) {
+                    return '';
+                }
+                return keys.map(function (k) {
+                    const label = zhLabel[normalizePenaltyFieldKey(k)] || k;
+                    return (
+                        '<div class="reward-detail" style="margin-left:15px;">- <strong>' +
+                        escapeHtml(label) +
+                        ':</strong> ' +
+                        escapeHtml(String(fields[k])) +
+                        '</div>'
+                    );
+                }).join('');
+            }
+
+            function renderRawOutputs(ro) {
+                if (!ro || typeof ro !== 'object') {
+                    return '';
+                }
+                function section(title, dedList, evalList) {
+                    const sec = [];
+                    sec.push('<div style="margin-top:8px;"><strong>' + title + ':</strong></div>');
+                    if (dedList.length === 0 && evalList.length === 0) {
+                        sec.push('<div class="reward-detail" style="margin-left:15px;opacity:0.6;">（无 deductions/evaluation）</div>');
+                        return sec.join('');
+                    }
+                    if (dedList.length > 0) {
+                        dedList.forEach(function (b) {
+                            sec.push('<pre style="margin:4px 0 4px 15px;padding:8px 12px;background:rgba(0,0,0,0.03);border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;">' + escapeHtml(b) + '</pre>');
+                        });
+                        return sec.join('');
+                    }
+                    evalList.forEach(function (xml) {
+                        const parsed = parseEvaluationXmlSummary(xml);
+                        const fields = parseEvaluationBlockFields(xml);
+                        sec.push('<div class="eval-card">');
+                        sec.push(
+                            '<div class="eval-score-grid">' +
+                            '<div class="eval-score-item"><div class="k">累计扣分</div><div class="v">' + escapeHtml(parsed.total_deductions || 'N/A') + '</div></div>' +
+                            '<div class="eval-score-item"><div class="k">原始分</div><div class="v">' + escapeHtml(parsed.raw_score || 'N/A') + '</div></div>' +
+                            '<div class="eval-score-item"><div class="k">最终分</div><div class="v">' + escapeHtml(parsed.score || 'N/A') + '</div></div>' +
+                            '</div>'
+                        );
+                        const dimKeys = Object.keys(parsed.dimension_deductions || {});
+                        if (dimKeys.length) {
+                            sec.push('<div class="eval-dim-list">');
+                            dimKeys.forEach(function (k) {
+                                sec.push(
+                                    '<span class="eval-dim-chip">' +
+                                    escapeHtml(k) +
+                                    ': ' +
+                                    escapeHtml(String(parsed.dimension_deductions[k])) +
+                                    '</span>'
+                                );
+                            });
+                            sec.push('</div>');
+                        }
+                        if (parsed.items.length) {
+                            parsed.items.forEach(function (item) {
+                                const ruleText = item.rule ? String(item.rule) : '';
+                                const evidenceText = item.evidence ? String(item.evidence) : '';
+                                const ruleTrId = ruleText ? registerDeductionTranslateText(ruleText) : '';
+                                const evidenceTrId = evidenceText ? registerDeductionTranslateText(evidenceText) : '';
+                                sec.push('<div class="eval-item">');
+                                sec.push(
+                                    '<div class="eval-item-meta">' +
+                                    '<span class="eval-badge">维度: ' + escapeHtml(item.dimension || 'N/A') + '</span>' +
+                                    '<span class="eval-badge">扣分: ' + escapeHtml(item.points || 'N/A') + '</span>' +
+                                    '</div>'
+                                );
+                                if (ruleText) {
+                                    sec.push(
+                                        '<div class="eval-item-main"><strong>规则:</strong> ' +
+                                        escapeHtml(ruleText) +
+                                        '<div class="eval-item-tr" data-deduction-tr-id="' +
+                                        ruleTrId +
+                                        '" hidden></div></div>'
+                                    );
+                                }
+                                if (evidenceText) {
+                                    sec.push(
+                                        '<div class="eval-item-main"><strong>证据:</strong> ' +
+                                        escapeHtml(evidenceText) +
+                                        '<div class="eval-item-tr" data-deduction-tr-id="' +
+                                        evidenceTrId +
+                                        '" hidden></div></div>'
+                                    );
+                                }
+                                sec.push('</div>');
+                            });
+                        } else {
+                            sec.push(renderEvaluationFields(fields));
+                        }
+                        sec.push(
+                            '<div class="eval-raw"><details><summary>查看原始 XML</summary>' +
+                            '<pre style="margin:6px 0 0 0;padding:8px 10px;background:rgba(0,0,0,0.03);border-radius:6px;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5;">' +
+                            escapeHtml(prettyFormatXml('<evaluation>' + xml + '</evaluation>')) +
+                            '</pre></details></div>'
+                        );
+                        sec.push('</div>');
+                    });
+                    return sec.join('');
+                }
+                const trajDeds = extractDeductionsInners(ro.trajectory);
+                const ansDeds = extractDeductionsInners(ro.answer);
+                const trajEvals = extractEvaluationInners(ro.trajectory);
+                const ansEvals = extractEvaluationInners(ro.answer);
+                return (
+                    section('raw_outputs · trajectory', trajDeds, trajEvals) +
+                    section('raw_outputs · answer', ansDeds, ansEvals)
+                );
+            }
 
             return `
                 <div class="reward-info">
                     <div class="reward-info-title">📊 Reward详情</div>
-                    <div class="reward-detail"><strong>最终分数:</strong> ${info.final_reward?.toFixed(3) || 'N/A'}</div>
-                    <div class="reward-detail"><strong>LLM Reward:</strong> ${info.llm_reward?.toFixed(3) || 'N/A'}</div>
-                    <div class="reward-detail"><strong>Reward响应:</strong> ${info.reward_response || 'N/A'}</div>
+                    <div class="reward-detail"><strong>最终分数:</strong> ${info.final_reward?.toFixed ? info.final_reward.toFixed(3) : (info.final_reward ?? 'N/A')}</div>
+                    <div class="reward-detail"><strong>Reward Score:</strong> ${topScore != null ? Number(topScore).toFixed(3) : 'N/A'}</div>
+                    <div class="reward-detail"><strong>LLM Reward:</strong> ${info.llm_reward?.toFixed ? info.llm_reward.toFixed(3) : (info.llm_reward ?? 'N/A')}</div>
+                    ${(function() {
+                        const rr = parseRewardResponseObject(info.reward_response);
+                        if (rr == null) return '<div class="reward-detail"><strong>Reward响应:</strong> N/A</div>';
+                        const sc = rr.scores || {};
+                        const parts = [];
+                        parts.push('<div class="reward-detail"><strong>Reward响应:</strong></div>');
+                        if (sc.trajectory != null || sc.answer != null) {
+                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Trajectory 评分: ' + (sc.trajectory != null ? sc.trajectory : 'N/A') + '</div>');
+                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Answer 评分: ' + (sc.answer != null ? sc.answer : 'N/A') + '</div>');
+                        }
+                        if (rr.final_reward != null) {
+                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Final Reward: ' + rr.final_reward + '</div>');
+                        }
+                        parts.push(renderRawOutputs(rr.raw_outputs));
+                        return parts.join('');
+                    })()}
                     ${Object.keys(ruleRewards).length > 0 ? `
                         <div style="margin-top: 10px;">
                             <strong>规则奖励:</strong>
@@ -4364,16 +5899,19 @@
         }
 
         function renderMetadata(rollout) {
+            const runTimeSec = rolloutRunTimeSeconds(rollout);
+            const displayId = rolloutDisplayId(rollout);
+            const displayQuestion = extractQuestionFromRollout(rollout);
             return `
                 <div class="metadata-section">
                     <div class="metadata-title">ℹ️ 元数据</div>
                     <div class="metadata-grid">
-                        <div class="metadata-item"><strong>Request ID:</strong> ${rollout.request_id || 'N/A'}</div>
+                        <div class="metadata-item"><strong>Request ID:</strong> ${escapeHtml(displayId)}</div>
                         <div class="metadata-item"><strong>时间戳:</strong> ${rollout.timestamp || 'N/A'}</div>
                         <div class="metadata-item"><strong>数据源:</strong> ${rollout.data_source || 'N/A'}</div>
-                        <div class="metadata-item"><strong>问题:</strong> ${rollout.question || 'N/A'}</div>
+                        <div class="metadata-item"><strong>问题:</strong> ${escapeHtml(displayQuestion || 'N/A')}</div>
                         <div class="metadata-item"><strong>完成原因:</strong> ${rollout.finish_reason || 'N/A'}</div>
-                        <div class="metadata-item"><strong>运行时间:</strong> ${rollout.run_time?.toFixed(2) || 'N/A'}s</div>
+                        <div class="metadata-item"><strong>运行时间:</strong> ${runTimeSec != null ? runTimeSec.toFixed(2) : 'N/A'}s</div>
                         ${rollout.tool_usage_counts ? `
                             <div class="metadata-item"><strong>工具使用:</strong> ${JSON.stringify(rollout.tool_usage_counts)}</div>
                         ` : ''}

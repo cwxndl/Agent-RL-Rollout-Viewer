@@ -40,14 +40,18 @@ const http = __importStar(require("http"));
 const path = __importStar(require("path"));
 const url_1 = require("url");
 const util_1 = require("util");
+const deductionReport_1 = require("./deductionReport");
 const readdir = (0, util_1.promisify)(fs.readdir);
 const readFile = (0, util_1.promisify)(fs.readFile);
 const writeFile = (0, util_1.promisify)(fs.writeFile);
 const stat = (0, util_1.promisify)(fs.stat);
 /** 各 step 目录下的摘要缓存文件名（排除在 json 列表外） */
 const SUMMARY_CACHE_FILE = '.agent_rl_viewer_summary.json';
+const SUMMARY_CACHE_VERSION = 2;
 /** 摘要接口并行读取上限（偏 IO 密集，可略高于 CPU 核数） */
 const SUMMARY_READ_CONCURRENCY = 96;
+/** 批量扣分报告接口并行读取上限 */
+const STEP_DEDUCTION_READ_CONCURRENCY = 48;
 /** 校验缓存时并行 stat 源 json 的并发 */
 const SUMMARY_STAT_CONCURRENCY = 128;
 function isPathInsideRoot(root, target) {
@@ -78,8 +82,41 @@ function rolloutScore(r) {
     if (typeof r.score === 'number') {
         return r.score;
     }
+    if (typeof r.reward_score === 'number') {
+        return r.reward_score;
+    }
     const reward = r.reward;
-    return reward?.score ?? 0;
+    if (typeof reward?.score === 'number') {
+        return reward.score;
+    }
+    const topInfo = r.reward_info;
+    if (typeof topInfo?.final_reward === 'number') {
+        return topInfo.final_reward;
+    }
+    const nestedInfo = r.reward?.reward_info;
+    if (typeof nestedInfo?.final_reward === 'number') {
+        return nestedInfo.final_reward;
+    }
+    return 0;
+}
+function rolloutRunTimeSeconds(r) {
+    if (typeof r.run_time === 'number' && Number.isFinite(r.run_time)) {
+        return r.run_time;
+    }
+    if (typeof r.runtime === 'number' && Number.isFinite(r.runtime)) {
+        return r.runtime;
+    }
+    const infoTop = r.reward_info;
+    if (typeof infoTop?.reward_time === 'number' && Number.isFinite(infoTop.reward_time)) {
+        return infoTop.reward_time;
+    }
+    const reward = r.reward;
+    if (reward?.reward_info &&
+        typeof reward.reward_info.reward_time === 'number' &&
+        Number.isFinite(reward.reward_info.reward_time)) {
+        return reward.reward_info.reward_time;
+    }
+    return undefined;
 }
 /** 与 viewer：多模态 user 的 content 为数组时，仅拼接 type===text 的片段再抽问句 */
 function contentToPlainTextForQuestion(content) {
@@ -97,24 +134,43 @@ function contentToPlainTextForQuestion(content) {
     }
     return parts.join('\n');
 }
+function stripSystemReminder(text) {
+    const idx = text.indexOf('# system-reminder');
+    return idx >= 0 ? text.substring(0, idx) : text;
+}
 function extractQuestion(content) {
-    const nluMatch = content.match(/^(.*?)<NLU\(仅供参考\)>/s);
+    const cleaned = stripSystemReminder(content);
+    const nluMatch = cleaned.match(/^(.*?)<NLU\(仅供参考\)>/s);
     if (nluMatch) {
         return nluMatch[1].trim();
     }
-    const timeMatch = content.match(/^(.*?)<当前系统时间>/s) || content.match(/^(.*?)<当前时间>/s);
+    const timeMatch = cleaned.match(/^(.*?)<当前系统时间>/s) || cleaned.match(/^(.*?)<当前时间>/s);
     if (timeMatch) {
         return timeMatch[1].trim();
     }
-    const firstLine = content.split('\n')[0].trim();
-    return firstLine.substring(0, 200);
+    const lines = cleaned.split('\n');
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed) {
+            return trimmed.substring(0, 200);
+        }
+    }
+    return '';
+}
+function contentHasImage(content) {
+    if (!Array.isArray(content)) {
+        return false;
+    }
+    return content.some((p) => p && typeof p === 'object' && p.type === 'image_url');
 }
 function summarizeRollout(data, file) {
     const messages = data.messages || [];
     let extractedQuestion = '';
+    let hasImage = false;
     for (let j = messages.length - 1; j >= 0; j--) {
         if (messages[j].role === 'user') {
             const c = messages[j].content;
+            hasImage = contentHasImage(c);
             let raw = contentToPlainTextForQuestion(c);
             if (!raw.trim()) {
                 raw = typeof c === 'string' ? c : JSON.stringify(c);
@@ -123,6 +179,9 @@ function summarizeRollout(data, file) {
             break;
         }
     }
+    if (!extractedQuestion && typeof data.question === 'string') {
+        extractedQuestion = data.question.trim().substring(0, 200);
+    }
     if (!extractedQuestion) {
         extractedQuestion = '未找到user内容';
     }
@@ -130,9 +189,10 @@ function summarizeRollout(data, file) {
         file,
         score: rolloutScore(data),
         question: extractedQuestion,
+        hasImage,
         request_id: data.request_id,
         timestamp: data.timestamp,
-        run_time: data.run_time
+        run_time: rolloutRunTimeSeconds(data)
     };
 }
 function summarizeRolloutFailed(file) {
@@ -184,7 +244,7 @@ async function tryReadSummaryCache(stepDir, sortedFiles) {
     catch {
         return null;
     }
-    if (payload.version !== 1 ||
+    if (payload.version !== SUMMARY_CACHE_VERSION ||
         !Array.isArray(payload.files) ||
         !Array.isArray(payload.summaries) ||
         payload.files.length !== sortedFiles.length ||
@@ -205,7 +265,7 @@ async function tryReadSummaryCache(stepDir, sortedFiles) {
 async function writeSummaryCache(stepDir, sortedFiles, summaries) {
     const cachePath = path.join(stepDir, SUMMARY_CACHE_FILE);
     const body = {
-        version: 1,
+        version: SUMMARY_CACHE_VERSION,
         files: sortedFiles,
         summaries
     };
@@ -272,7 +332,7 @@ function startRolloutServer(rolloutRoot, extensionMediaDir) {
                 const inject = `<script>window.__AGENT_RL_API_TOKEN__=${JSON.stringify(token)};</script>`;
                 html = html.replace('</head>', `${inject}</head>`);
                 const buf = Buffer.from(html, 'utf-8');
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': buf.length });
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': buf.length, 'Cache-Control': 'no-store' });
                 res.end(buf);
                 return;
             }
@@ -364,6 +424,54 @@ function startRolloutServer(rolloutRoot, extensionMediaDir) {
                 catch {
                     json(res, 404, { error: 'File not found' });
                 }
+                return;
+            }
+            if (pathname === '/api/step-deduction-reports') {
+                const stepName = u.searchParams.get('step') || '';
+                if (!safeStepSegment(stepName)) {
+                    json(res, 400, { error: 'Invalid step' });
+                    return;
+                }
+                const modeParam = (u.searchParams.get('mode') || 'deductions').toLowerCase();
+                const mode = modeParam === 'report' ? 'report' : 'deductions';
+                const stepDir = path.join(rolloutRoot, stepName);
+                if (!isPathInsideRoot(rolloutRoot, stepDir)) {
+                    forbidden(res);
+                    return;
+                }
+                let names;
+                try {
+                    names = (await readdir(stepDir)).filter(f => safeJsonBasename(f)).sort();
+                }
+                catch {
+                    json(res, 404, { error: 'Step not found' });
+                    return;
+                }
+                const items = [];
+                const fileJobs = names
+                    .map(file => ({ file, fp: path.join(stepDir, file) }))
+                    .filter(({ fp }) => isPathInsideRoot(rolloutRoot, fp));
+                for (let i = 0; i < fileJobs.length; i += STEP_DEDUCTION_READ_CONCURRENCY) {
+                    const chunk = fileJobs.slice(i, i + STEP_DEDUCTION_READ_CONCURRENCY);
+                    const batch = await Promise.all(chunk.map(async ({ file, fp }) => {
+                        try {
+                            const raw = await readFile(fp, 'utf-8');
+                            const data = JSON.parse(raw);
+                            const text = mode === 'report'
+                                ? (0, deductionReport_1.buildDeductionSummaryMarkdown)(data)
+                                : (0, deductionReport_1.buildDeductionsRawExport)(data);
+                            const meta = (0, deductionReport_1.extractRolloutMeta)(data);
+                            return { file, text, meta };
+                        }
+                        catch {
+                            return { file, text: null, parseError: 'json_parse_failed' };
+                        }
+                    }));
+                    for (const b of batch) {
+                        items.push(b);
+                    }
+                }
+                json(res, 200, { step: stepName, mode, totalFiles: items.length, items });
                 return;
             }
             notFound(res);
