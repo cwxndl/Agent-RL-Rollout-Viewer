@@ -13,7 +13,8 @@ const stat = promisify(fs.stat);
 
 /** 各 step 目录下的摘要缓存文件名（排除在 json 列表外） */
 const SUMMARY_CACHE_FILE = '.agent_rl_viewer_summary.json';
-const SUMMARY_CACHE_VERSION = 2;
+const SUMMARY_CACHE_VERSION = 3;
+const STEP_INDEX_FILE = 'index.jsonl';
 
 /** 摘要接口并行读取上限（偏 IO 密集，可略高于 CPU 核数） */
 const SUMMARY_READ_CONCURRENCY = 96;
@@ -68,6 +69,10 @@ function rolloutScore(r: Record<string, unknown>): number {
     if (typeof r.score === 'number') {
         return r.score;
     }
+    /** 部分索引/导出使用首字母大写 Reward */
+    if (typeof (r as { Reward?: unknown }).Reward === 'number') {
+        return (r as { Reward: number }).Reward;
+    }
     if (typeof r.reward_score === 'number') {
         return r.reward_score;
     }
@@ -88,8 +93,18 @@ function rolloutScore(r: Record<string, unknown>): number {
 }
 
 function rolloutRunTimeSeconds(r: Record<string, unknown>): number | undefined {
-    if (typeof r.run_time === 'number' && Number.isFinite(r.run_time)) {
-        return r.run_time;
+    const rt = r.run_time;
+    if (rt && typeof rt === 'object' && !Array.isArray(rt)) {
+        const total = (rt as { total_time?: unknown }).total_time;
+        if (typeof total === 'number' && Number.isFinite(total)) {
+            return total;
+        }
+    }
+    if (typeof rt === 'number' && Number.isFinite(rt)) {
+        return rt;
+    }
+    if (typeof r.total_time === 'number' && Number.isFinite(r.total_time)) {
+        return r.total_time;
     }
     if (typeof r.runtime === 'number' && Number.isFinite(r.runtime)) {
         return r.runtime;
@@ -107,6 +122,18 @@ function rolloutRunTimeSeconds(r: Record<string, unknown>): number | undefined {
         return reward.reward_info.reward_time;
     }
     return undefined;
+}
+
+function rolloutTokenCount(r: Record<string, unknown>): number | undefined {
+    if (typeof r.Tokens === 'number' && Number.isFinite(r.Tokens)) {
+        return r.Tokens;
+    }
+    if (typeof r.tokens === 'number' && Number.isFinite(r.tokens)) {
+        return r.tokens;
+    }
+    const token = r.token as { token_info?: { total_tokens?: unknown } } | undefined;
+    const total = token?.token_info?.total_tokens;
+    return typeof total === 'number' && Number.isFinite(total) ? total : undefined;
 }
 
 /** 与 viewer：多模态 user 的 content 为数组时，仅拼接 type===text 的片段再抽问句 */
@@ -161,6 +188,23 @@ function contentHasImage(content: unknown): boolean {
     );
 }
 
+function rolloutHasGroundTruth(data: Record<string, unknown>): boolean {
+    const gt = data.ground_truth;
+    if (gt == null) {
+        return false;
+    }
+    if (typeof gt === 'string') {
+        return gt.trim().length > 0;
+    }
+    if (Array.isArray(gt)) {
+        return gt.length > 0;
+    }
+    if (typeof gt === 'object') {
+        return Object.keys(gt as object).length > 0;
+    }
+    return String(gt).trim().length > 0;
+}
+
 function summarizeRollout(data: Record<string, unknown>, file: string): Record<string, unknown> {
     const messages = (data.messages as Array<{ role?: string; content?: unknown }>) || [];
     let extractedQuestion = '';
@@ -188,10 +232,78 @@ function summarizeRollout(data: Record<string, unknown>, file: string): Record<s
         score: rolloutScore(data),
         question: extractedQuestion,
         hasImage,
+        hasGroundTruth: rolloutHasGroundTruth(data),
         request_id: data.request_id,
+        query_id: data.query_id,
         timestamp: data.timestamp,
-        run_time: rolloutRunTimeSeconds(data)
+        run_time: rolloutRunTimeSeconds(data),
+        tokens: rolloutTokenCount(data),
+        data_source: data.data_source,
+        ori_data_source: data.ori_data_source,
+        finish_reason: data.finish_reason
     };
+}
+
+function summarizeIndexEntry(data: Record<string, unknown>): Record<string, unknown> | null {
+    const rawFile =
+        data['轨迹文件名'] ??
+        data.file ??
+        data.filename ??
+        data.rollout_file ??
+        data.path;
+    if (typeof rawFile !== 'string') {
+        return null;
+    }
+    const file = path.basename(rawFile);
+    if (!safeJsonBasename(file)) {
+        return null;
+    }
+    const question = typeof data.question === 'string' && data.question.trim()
+        ? data.question.trim().substring(0, 200)
+        : '未找到user内容';
+    return {
+        file,
+        score: rolloutScore(data),
+        question,
+        hasImage: false,
+        request_id: data.request_id,
+        query_id: data.query_id,
+        timestamp: data.timestamp,
+        run_time: rolloutRunTimeSeconds(data),
+        tokens: rolloutTokenCount(data),
+        data_source: data.data_source,
+        ori_data_source: data.ori_data_source,
+        finish_reason: data.finish_reason,
+        phase: data['阶段'] ?? data.phase,
+        step: data.step
+    };
+}
+
+async function tryReadStepIndexSummaries(stepDir: string): Promise<Record<string, unknown>[] | null> {
+    let raw: string;
+    try {
+        raw = await readFile(path.join(stepDir, STEP_INDEX_FILE), 'utf-8');
+    } catch {
+        return null;
+    }
+    const summaries: Record<string, unknown>[] = [];
+    const lines = raw.split(/\r?\n/);
+    for (const line of lines) {
+        const s = line.trim();
+        if (!s) {
+            continue;
+        }
+        try {
+            const item = JSON.parse(s) as Record<string, unknown>;
+            const summary = summarizeIndexEntry(item);
+            if (summary) {
+                summaries.push(summary);
+            }
+        } catch {
+            /* 单行索引损坏不影响其它轨迹展示 */
+        }
+    }
+    return summaries.length > 0 ? summaries : null;
 }
 
 function summarizeRolloutFailed(file: string): Record<string, unknown> {
@@ -379,6 +491,17 @@ export function startRolloutServer(rolloutRoot: string, extensionMediaDir: strin
                     forbidden(res);
                     return;
                 }
+
+                const indexedSummaries = await tryReadStepIndexSummaries(stepDir);
+                if (indexedSummaries) {
+                    json(res, 200, {
+                        summaries: indexedSummaries,
+                        fromCache: false,
+                        fromIndex: true
+                    });
+                    return;
+                }
+
                 let names: string[];
                 try {
                     names = (await readdir(stepDir)).filter(f => safeJsonBasename(f)).sort();

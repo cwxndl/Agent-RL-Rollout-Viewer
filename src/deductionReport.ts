@@ -45,6 +45,10 @@ function getRewardInfoObject(rollout: Record<string, unknown>): Record<string, u
 
 function getRawOutputsFromRollout(rollout: Record<string, unknown>): Record<string, unknown> | null {
     const info = getRewardInfoObject(rollout);
+    const direct = info?.raw_outputs;
+    if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
+        return direct as Record<string, unknown>;
+    }
     const rr = parseRewardResponseObject(info?.reward_response);
     const ro = rr?.raw_outputs;
     if (!ro || typeof ro !== 'object' || Array.isArray(ro)) {
@@ -174,10 +178,13 @@ export function buildDeductionSummaryMarkdown(rollout: Record<string, unknown>):
 
     const infoTop = getRewardInfoObject(rollout) ?? undefined;
     const parsedRr = parseRewardResponseObject(infoTop?.reward_response);
+    const directScores = infoTop?.scores;
     const scores =
-        parsedRr?.scores && typeof parsedRr.scores === 'object' && !Array.isArray(parsedRr.scores)
-            ? (parsedRr.scores as Record<string, unknown>)
-            : null;
+        directScores && typeof directScores === 'object' && !Array.isArray(directScores)
+            ? (directScores as Record<string, unknown>)
+            : parsedRr?.scores && typeof parsedRr.scores === 'object' && !Array.isArray(parsedRr.scores)
+                ? (parsedRr.scores as Record<string, unknown>)
+                : null;
 
     const lines: string[] = [];
 
@@ -433,12 +440,20 @@ export function extractRolloutMeta(rollout: Record<string, unknown>): {
     const info = getRewardInfoObject(rollout) ?? undefined;
     const final_reward = info?.final_reward != null && typeof info.final_reward === 'number'
         ? info.final_reward : null;
+    if (score == null && final_reward != null) {
+        score = final_reward;
+    }
 
     const rr = parseRewardResponseObject(info?.reward_response);
     let trajectory_score: number | null = null;
     let answer_score: number | null = null;
-    if (rr?.scores && typeof rr.scores === 'object' && !Array.isArray(rr.scores)) {
-        const sc = rr.scores as Record<string, unknown>;
+    const directScores = info?.scores;
+    const scoreSource =
+        directScores && typeof directScores === 'object' && !Array.isArray(directScores)
+            ? directScores
+            : rr?.scores;
+    if (scoreSource && typeof scoreSource === 'object' && !Array.isArray(scoreSource)) {
+        const sc = scoreSource as Record<string, unknown>;
         if (typeof sc.trajectory === 'number') { trajectory_score = sc.trajectory; }
         if (typeof sc.answer === 'number') { answer_score = sc.answer; }
     }

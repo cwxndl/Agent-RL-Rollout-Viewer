@@ -505,7 +505,7 @@
             box-shadow: none;
         }
 
-        /* 三栏布局：左侧问句 + 中间详情（最大） + 右侧Rollout */
+        /* 三栏布局：左侧问句 + 中间详情（轨迹+Reward 合并） + 右侧 Rollout */
         .main-content {
             display: flex;
             flex-direction: row;
@@ -526,11 +526,11 @@
             align-items: stretch;
         }
 
-        /* 左侧问句列表 - 固定宽度 */
+        /* 左侧问句列表 - 固定宽度（收窄以留出中间详情空间） */
         .sidebar {
-            flex: 0 0 340px;
-            width: 340px;
-            min-width: 300px;
+            flex: 0 0 260px;
+            width: 260px;
+            min-width: 240px;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
             border-radius: 20px;
@@ -666,7 +666,56 @@
             background: rgba(16, 185, 129, 0.35);
         }
 
-        /* 内嵌 HTML 片段（助手回复中的推广条等） */
+        .variance-filter-chip.gt-chip {
+            background: rgba(59, 130, 246, 0.15);
+            color: #1d4ed8;
+        }
+
+        .variance-filter-chip.gt-chip.active {
+            background: rgba(59, 130, 246, 0.35);
+        }
+
+        .question-gt-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: rgba(59, 130, 246, 0.15);
+            color: #1d4ed8;
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .ground-truth-section {
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(52, 211, 153, 0.08) 100%);
+            border: 2px solid rgba(16, 185, 129, 0.38);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12);
+        }
+
+        .ground-truth-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #047857;
+            margin-bottom: 8px;
+        }
+
+        .ground-truth-content {
+            font-size: 13px;
+            line-height: 1.65;
+            color: #1d1d1f;
+            font-weight: 600;
+            white-space: pre-wrap;
+            word-break: break-word;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.82);
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
         .markdown-content .embedded-html-block {
             margin: 16px 0;
             max-width: 100%;
@@ -843,11 +892,11 @@
             background: rgba(255, 255, 255, 0.85);
         }
 
-        /* 右侧 rollout 列表 - 固定宽度 */
+        /* 右侧 rollout 列表 - 收窄固定宽度 */
         .rollout-panel {
-            flex: 0 0 380px;
-            width: 380px;
-            min-width: 340px;
+            flex: 0 0 200px;
+            width: 200px;
+            min-width: 180px;
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
             border-radius: 20px;
@@ -864,8 +913,107 @@
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
         }
 
+        /* 中间详情面板内：轨迹内容 + Reward 合并为同一框 */
+        .detail-panel-split {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .detail-content {
+            flex: 1;
+            min-width: 0;
+            overflow-y: auto;
+            padding: 20px 22px;
+        }
+
+        .detail-reward-pane {
+            flex: 0 0 300px;
+            width: 300px;
+            min-width: 260px;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid rgba(255, 193, 7, 0.22);
+            background: linear-gradient(180deg, rgba(255, 249, 230, 0.55) 0%, rgba(255, 255, 255, 0.92) 100%);
+            min-height: 0;
+        }
+
+        .detail-reward-pane-header {
+            padding: 14px 16px 12px;
+            border-bottom: 1px solid rgba(255, 193, 7, 0.2);
+            flex-shrink: 0;
+            background: linear-gradient(135deg, rgba(255, 235, 59, 0.14) 0%, rgba(255, 193, 7, 0.1) 100%);
+        }
+
+        .detail-reward-pane-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 14px 16px;
+            min-height: 0;
+        }
+
+        .detail-panel-split:not(.has-reward) .detail-reward-pane {
+            display: none;
+        }
+
+        .reward-panel-empty {
+            text-align: center;
+            padding: 32px 14px;
+            color: #86868b;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .deduction-items-section {
+            margin-top: 12px;
+        }
+
+        .deduction-items-section-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .deduction-items-block {
+            margin-bottom: 10px;
+        }
+
+        .deduction-items-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 6px;
+        }
+
+        .deduction-items-scroll {
+            max-height: 220px;
+            overflow-y: auto;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(255, 193, 7, 0.28);
+            border-radius: 10px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: #424245;
+        }
+
+        .deduction-item-line {
+            margin: 0 0 8px 0;
+            padding-left: 10px;
+            border-left: 2px solid rgba(255, 193, 7, 0.55);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .deduction-item-line:last-child {
+            margin-bottom: 0;
+        }
+
         .rollout-panel-header {
-            padding: 16px 18px;
+            padding: 14px 12px;
             border-bottom: 1px solid rgba(0, 0, 0, 0.06);
             flex-shrink: 0;
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
@@ -873,7 +1021,7 @@
 
         .rollout-panel-title {
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
             color: #1d1d1f;
             margin-bottom: 8px;
             letter-spacing: -0.3px;
@@ -881,16 +1029,16 @@
 
         .rollout-panel-meta {
             display: flex;
-            gap: 10px;
-            font-size: 12px;
+            gap: 6px;
+            font-size: 11px;
             color: #6e6e73;
             flex-wrap: wrap;
         }
 
         .rollout-panel-meta span {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-            padding: 6px 12px;
-            border-radius: 8px;
+            padding: 4px 8px;
+            border-radius: 6px;
             font-weight: 600;
             color: #667eea;
         }
@@ -898,14 +1046,14 @@
         .rollout-list {
             overflow-y: auto;
             flex: 1;
-            padding: 16px;
+            padding: 10px;
         }
 
         .rollout-item {
             border: 2px solid rgba(0, 0, 0, 0.06);
-            border-radius: 12px;
-            padding: 12px 14px;
-            margin-bottom: 10px;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
             cursor: pointer;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             background: white;
@@ -939,8 +1087,9 @@
 
         .rollout-info {
             display: flex;
-            gap: 14px;
-            align-items: center;
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
         }
 
         .score-compact {
@@ -949,15 +1098,16 @@
             align-items: flex-start;
             gap: 4px;
             flex-shrink: 0;
-            min-width: 90px;
-            padding: 8px 12px;
+            min-width: 0;
+            width: 100%;
+            padding: 6px 8px;
             background: rgba(255, 255, 255, 0.6);
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .score-value {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 800;
             font-variant-numeric: tabular-nums;
             letter-spacing: -0.02em;
@@ -1025,18 +1175,18 @@
         .bar-negative { background: linear-gradient(90deg, #ff6b6b 0%, #ee5a6f 100%); }
 
         .rollout-meta {
-            font-size: 12px;
+            font-size: 11px;
             color: #6e6e73;
             flex: 1;
             min-width: 0;
-            line-height: 1.5;
+            line-height: 1.45;
         }
 
         .rollout-meta div {
-            margin: 3px 0;
-            white-space: nowrap;
+            margin: 2px 0;
+            white-space: normal;
             overflow: hidden;
-            text-overflow: ellipsis;
+            word-break: break-all;
         }
 
         .rollout-meta strong {
@@ -1097,12 +1247,6 @@
             gap: 8px;
             align-items: center;
             flex-shrink: 0;
-        }
-
-        .detail-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
         }
 
         .msg-translate-block {
@@ -1925,19 +2069,19 @@
         }
 
         .reward-info {
-            margin-top: 28px;
-            padding: 24px;
-            background: linear-gradient(135deg, rgba(255, 235, 59, 0.15) 0%, rgba(255, 193, 7, 0.15) 100%);
-            border-left: 4px solid #ffc107;
-            border-radius: 16px;
-            box-shadow: 0 4px 16px rgba(255, 193, 7, 0.1);
+            margin-top: 0;
+            padding: 0;
+            background: transparent;
+            border-left: none;
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .reward-info-title {
             font-weight: 700;
-            margin-bottom: 16px;
+            margin-bottom: 0;
             color: #1d1d1f;
-            font-size: 17px;
+            font-size: 15px;
             letter-spacing: -0.3px;
             display: flex;
             align-items: center;
@@ -1945,10 +2089,10 @@
         }
 
         .reward-detail {
-            font-size: 14px;
+            font-size: 12px;
             color: #6e6e73;
-            margin: 10px 0;
-            padding: 8px 12px;
+            margin: 6px 0;
+            padding: 6px 10px;
             background: rgba(255, 255, 255, 0.5);
             border-radius: 8px;
         }
@@ -2146,13 +2290,18 @@
 
         @media (max-width: 1400px) {
             .sidebar {
-                flex: 0 0 280px;
-                width: 280px;
+                flex: 0 0 240px;
+                width: 240px;
             }
 
             .rollout-panel {
-                flex: 0 0 340px;
-                width: 340px;
+                flex: 0 0 180px;
+                width: 180px;
+            }
+
+            .detail-reward-pane {
+                flex: 0 0 260px;
+                width: 260px;
             }
         }
 
@@ -2172,7 +2321,20 @@
             .rollout-panel {
                 flex: 0 0 auto;
                 width: 100%;
-                max-height: 350px;
+                max-height: 280px;
+            }
+
+            .detail-panel-split {
+                flex-direction: column;
+            }
+
+            .detail-reward-pane {
+                flex: 0 0 auto;
+                width: 100%;
+                min-width: 0;
+                max-height: 320px;
+                border-left: none;
+                border-top: 2px solid rgba(255, 193, 7, 0.22);
             }
 
             .detail-panel {
@@ -2946,6 +3108,59 @@
             );
         }
 
+        function assistantContentHasXmlToolCall(rawContent) {
+            if (typeof rawContent === 'string') {
+                return rawContent.indexOf('<tool_call>') >= 0;
+            }
+            if (!Array.isArray(rawContent)) {
+                return false;
+            }
+            for (let i = 0; i < rawContent.length; i++) {
+                const p = rawContent[i];
+                if (
+                    p &&
+                    typeof p === 'object' &&
+                    p.type === 'text' &&
+                    typeof p.text === 'string' &&
+                    p.text.indexOf('<tool_call>') >= 0
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function renderNativeToolCalls(toolCalls) {
+            if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+                return '';
+            }
+            const blocks = toolCalls.map(function (tc) {
+                const fn = tc && tc.function && typeof tc.function === 'object' ? tc.function : null;
+                const name = (fn && fn.name) || tc.name || 'tool';
+                const argsRaw = fn && fn.arguments != null ? String(fn.arguments) : '';
+                let argsDisplay = argsRaw;
+                try {
+                    argsDisplay = JSON.stringify(JSON.parse(argsRaw), null, 2);
+                } catch (e) {
+                    /* keep raw string */
+                }
+                return (
+                    '<div class="native-tool-call-card" style="margin-top:8px;padding:10px 12px;background:rgba(0,0,0,0.04);border-radius:8px;border:1px solid rgba(0,0,0,0.08);">' +
+                    '<div style="font-weight:600;margin-bottom:6px;">🛠️ ' +
+                    escapeHtml(String(name)) +
+                    '</div>' +
+                    '<pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.45;">' +
+                    escapeHtml(argsDisplay) +
+                    '</pre></div>'
+                );
+            });
+            return (
+                '<div class="native-tool-calls-wrap" style="margin-top:10px;"><div style="font-size:12px;opacity:0.75;margin-bottom:4px;">tool_calls（API 结构，与正文 XML 不重复展示）</div>' +
+                blocks.join('') +
+                '</div>'
+            );
+        }
+
         function renderSegmentWithToolCalls(text) {
             if (text == null || text === '') {
                 return '';
@@ -3079,6 +3294,55 @@
             return null;
         }
 
+        function rolloutHasGroundTruth(rollout) {
+            if (!rollout || typeof rollout !== 'object') {
+                return false;
+            }
+            if (rollout.hasGroundTruth === true) {
+                return true;
+            }
+            const gt = rollout.ground_truth;
+            if (gt == null) {
+                return false;
+            }
+            if (typeof gt === 'string') {
+                return gt.trim().length > 0;
+            }
+            if (Array.isArray(gt)) {
+                return gt.length > 0;
+            }
+            if (typeof gt === 'object') {
+                return Object.keys(gt).length > 0;
+            }
+            return String(gt).trim().length > 0;
+        }
+
+        function extractGroundTruthFromRollout(rollout) {
+            if (!rolloutHasGroundTruth(rollout)) {
+                return '';
+            }
+            const gt = rollout.ground_truth;
+            if (typeof gt === 'string') {
+                return gt.trim();
+            }
+            if (typeof gt === 'object') {
+                return JSON.stringify(gt, null, 2);
+            }
+            return String(gt).trim();
+        }
+
+        function renderGroundTruthSection(groundTruth) {
+            if (!groundTruth) {
+                return '';
+            }
+            return (
+                '<div class="ground-truth-section">' +
+                '<div class="ground-truth-label">✅ 标准答案 (ground_truth)</div>' +
+                '<div class="ground-truth-content">' + escapeHtml(groundTruth) + '</div>' +
+                '</div>'
+            );
+        }
+
         function getRewardInfoFromRollout(rollout) {
             const reward = getRewardContainer(rollout);
             if (!reward || !reward.reward_info || typeof reward.reward_info !== 'object') {
@@ -3090,6 +3354,7 @@
         function rolloutScore(r) {
             if (r == null) return 0;
             if (typeof r.score === 'number') return r.score;
+            if (typeof r.Reward === 'number') return r.Reward;
             if (typeof r.reward_score === 'number') return r.reward_score;
             if (typeof r?.reward?.score === 'number') return r.reward.score;
             const info = getRewardInfoFromRollout(r);
@@ -3103,8 +3368,15 @@
             if (!rollout || typeof rollout !== 'object') {
                 return null;
             }
-            if (typeof rollout.run_time === 'number' && Number.isFinite(rollout.run_time)) {
-                return rollout.run_time;
+            const rt = rollout.run_time;
+            if (rt && typeof rt === 'object' && !Array.isArray(rt) && typeof rt.total_time === 'number' && Number.isFinite(rt.total_time)) {
+                return rt.total_time;
+            }
+            if (typeof rt === 'number' && Number.isFinite(rt)) {
+                return rt;
+            }
+            if (typeof rollout.total_time === 'number' && Number.isFinite(rollout.total_time)) {
+                return rollout.total_time;
             }
             if (typeof rollout.runtime === 'number' && Number.isFinite(rollout.runtime)) {
                 return rollout.runtime;
@@ -3779,6 +4051,7 @@
                         }, 0) / scores.length;
                 }
                 var hasImage = rollouts.some(function (r) { return !!r.hasImage; });
+                var hasGroundTruth = rollouts.some(function (r) { return rolloutHasGroundTruth(r._full || r); });
                 return {
                     content: content,
                     rollouts: sortedRollouts,
@@ -3786,7 +4059,8 @@
                     avgScore: parseFloat(avgScore.toFixed(4)),
                     variance: parseFloat(variance.toFixed(6)),
                     isConstant: allEqual,
-                    hasImage: hasImage
+                    hasImage: hasImage,
+                    hasGroundTruth: hasGroundTruth
                 };
             });
         }
@@ -3845,6 +4119,7 @@
                     score: rolloutScore(rollout),
                     question: extractedQuestion,
                     hasImage: hasImage,
+                    hasGroundTruth: rolloutHasGroundTruth(rollout),
                     request_id: rollout.request_id,
                     timestamp: rollout.timestamp,
                     run_time: rolloutRunTimeSeconds(rollout),
@@ -3877,12 +4152,16 @@
         }
 
         let imageFilterEnabled = false;
+        let groundTruthFilterEnabled = false;
 
         function getFilteredQuestionIndices(query) {
             const q = (query || '').trim().toLowerCase();
             let indices = getSortedClusterIndicesForCategory(questionCategoryFilter);
             if (imageFilterEnabled) {
                 indices = indices.filter((i) => clusteredData[i].hasImage);
+            }
+            if (groundTruthFilterEnabled) {
+                indices = indices.filter((i) => clusteredData[i].hasGroundTruth);
             }
             if (q) {
                 indices = indices.filter((i) => String(clusteredData[i].content).toLowerCase().includes(q));
@@ -3895,6 +4174,20 @@
             var btn = document.getElementById('btnImageFilter');
             if (btn) btn.classList.toggle('active', imageFilterEnabled);
             applyQuestionFilter();
+        }
+
+        function toggleGroundTruthFilter() {
+            groundTruthFilterEnabled = !groundTruthFilterEnabled;
+            document.querySelectorAll('.variance-filter-chip.gt-chip').forEach(function (el) {
+                el.classList.toggle('active', groundTruthFilterEnabled);
+            });
+            applyQuestionFilter();
+        }
+
+        function syncGroundTruthChipActive() {
+            document.querySelectorAll('.variance-filter-chip.gt-chip').forEach(function (el) {
+                el.classList.toggle('active', groundTruthFilterEnabled);
+            });
         }
 
         function setQuestionCategoryFilter(filter) {
@@ -3971,7 +4264,7 @@
                 blocks.push(`
                 <div class="question-item ${idx === currentClusterIndex ? 'active' : ''}" data-index="${idx}" onclick="selectQuestion(${idx})">
                     <div class="question-item-top">
-                        <div class="question-text">${c.hasImage ? '<span class="question-image-badge">🖼️</span> ' : ''}${escapeHtml(c.content)}</div>
+                        <div class="question-text">${c.hasGroundTruth ? '<span class="question-gt-badge">📌 标准答案</span> ' : ''}${c.hasImage ? '<span class="question-image-badge">🖼️</span> ' : ''}${escapeHtml(c.content)}</div>
                         <button type="button" class="question-copy-btn" title="复制该问句全文" aria-label="复制问句" tabindex="0" onclick="event.stopPropagation(); void copyClusterQuestion(${idx}, this);">复制</button>
                     </div>
                     ${trHtml}
@@ -4038,6 +4331,7 @@
                             <div style="font-size: 14px;">清空搜索框或更换关键字以显示问句列表</div>
                         </div>`;
                 }
+                clearRewardPanel('当前无匹配问句');
                 return;
             }
 
@@ -4071,6 +4365,7 @@
             const constantCount = clusteredData.filter(c => c.isConstant).length;
             const variableCount = clusteredData.length - constantCount;
             const imageCount = clusteredData.filter(c => c.hasImage).length;
+            const groundTruthCount = clusteredData.filter(c => c.hasGroundTruth).length;
 
             document.getElementById('stats').innerHTML = `
                 ${currentStep ? `<div class="stat-item"><strong>当前Step:</strong> ${currentStep.name}</div>` : ''}
@@ -4099,6 +4394,7 @@
                             <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
                                 <span class="variance-filter-chip var-chip" data-filter="variable" role="button" tabindex="0" title="仅显示分数有变化的问句，按方差从大到小" onclick="setQuestionCategoryFilter('variable')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('variable');}">变化 · ${variableCount} 问句</span>
                                 <span class="variance-filter-chip const-chip" data-filter="constant" role="button" tabindex="0" title="仅显示分数恒定的问句；方差相同时按平均分从高到低" onclick="setQuestionCategoryFilter('constant')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setQuestionCategoryFilter('constant');}">恒定 · ${constantCount} 问句</span>
+                                ${groundTruthCount ? `<span class="variance-filter-chip gt-chip" role="button" tabindex="0" title="仅显示轨迹中含 ground_truth 标准答案的问句" onclick="toggleGroundTruthFilter()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleGroundTruthFilter();}">📌 标准答案 · ${groundTruthCount}</span>` : ''}
                                 ${imageCount ? `<button type="button" class="btn-translate-toggle${imageFilterEnabled ? ' active' : ''}" id="btnImageFilter" title="仅显示含图片的问句" onclick="toggleImageFilter()">🖼️ 图片 · ${imageCount}</button>` : ''}
                                 <button type="button" class="btn-translate-toggle${translateEnabled ? ' active' : ''}" id="btnTranslateToggle" title="自动将非中文问句翻译为中文" onclick="toggleTranslate()">🌐 翻译</button>
                             </div>
@@ -4115,7 +4411,7 @@
                     <div class="detail-panel" id="detailPanel">
                         <div class="detail-panel-header">
                             <div class="detail-panel-header-row">
-                                <div class="detail-panel-title">📝 Rollout 详细内容</div>
+                                <div class="detail-panel-title">📝 Rollout 详细内容 &amp; Reward 详情</div>
                                 <div class="detail-json-toolbar-inline" id="detailJsonToolbar" style="display: none;" aria-hidden="true">
                                     <button type="button" class="btn-json-toggle" id="btnTranslateDetail" onclick="translateDetailMessages()">🌐 翻译内容</button>
                                     <button type="button" class="btn-json-toggle" id="btnToggleRawJson" onclick="toggleDetailRawJson()">查看原始 JSON</button>
@@ -4123,12 +4419,22 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="detail-content">
-                            <div class="detail-empty">
-                                <div class="detail-empty-icon">👈</div>
-                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">请先选择问句和Rollout</div>
-                                <div style="font-size: 14px;">点击左侧问句，再点击右侧的任一 Rollout 查看完整轨迹</div>
-                                <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">系统将自动定位到最后一条 Assistant 回答</div>
+                        <div class="detail-panel-split" id="detailPanelSplit">
+                            <div class="detail-content">
+                                <div class="detail-empty">
+                                    <div class="detail-empty-icon">👈</div>
+                                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">请先选择问句和Rollout</div>
+                                    <div style="font-size: 14px;">点击左侧问句，再点击右侧的任一 Rollout 查看完整轨迹</div>
+                                    <div style="font-size: 14px; margin-top: 8px; opacity: 0.7;">系统将自动定位到最后一条 Assistant 回答</div>
+                                </div>
+                            </div>
+                            <div class="detail-reward-pane" id="detailRewardPane">
+                                <div class="detail-reward-pane-header">
+                                    <div class="reward-info-title">📊 Reward详情</div>
+                                </div>
+                                <div class="detail-reward-pane-body" id="rewardPanelBody">
+                                    <div class="reward-panel-empty">选择 Rollout 后显示 Reward 详情</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4144,6 +4450,7 @@
                 listEl.innerHTML = renderQuestionListItems(getFilteredQuestionIndices(''));
             }
             syncVarianceChipActive();
+            syncGroundTruthChipActive();
             if (translateEnabled) translateAllVisibleQuestions();
         }
 
@@ -4169,6 +4476,7 @@
             } else {
                 currentRolloutIndex = -1;
                 setDetailJsonToolbarVisible(false);
+                clearRewardPanel('该问句下暂无 Rollout');
                 document.querySelector('.detail-content').innerHTML = `
                     <div class="detail-empty">
                         <div class="detail-empty-icon">📭</div>
@@ -4227,7 +4535,7 @@
                         </div>
                         <div class="rollout-meta">
                             <div><strong>ID</strong> ${escapeHtml(displayId.length > 20 ? displayId.substring(0, 20) + '…' : displayId)}</div>
-                            <div><strong>时间</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'} · <strong>运行</strong> ${runTimeSec != null ? runTimeSec.toFixed(2) : 'N/A'}s</div>
+                            <div><strong>时间</strong> ${rollout.timestamp?.substring(11, 19) || 'N/A'} · <strong>运行</strong> ${runTimeSec != null ? runTimeSec.toFixed(2) : 'N/A'}s${rollout.tokens != null ? ' · <strong>Tokens</strong> ' + escapeHtml(String(rollout.tokens)) : ''}</div>
                         </div>
                     </div>
                 </div>
@@ -4269,6 +4577,7 @@
 
             if (slot._full) {
                 detailEl.innerHTML = renderRolloutDetail(slot._full);
+                updateRewardPanel(slot._full);
                 bindCollapseEvents();
                 finalizeRolloutDetailView();
                 scrollDetailToLastAssistant();
@@ -4277,11 +4586,13 @@
 
             if (currentStepIndex < 0 || !stepsData[currentStepIndex]) {
                 setDetailJsonToolbarVisible(false);
+                clearRewardPanel();
                 detailEl.innerHTML = '<div class="detail-empty">无法加载：缺少 Step 上下文</div>';
                 return;
             }
 
             setDetailJsonToolbarVisible(false);
+            clearRewardPanel('正在加载 Reward 详情…');
             detailEl.innerHTML =
                 '<div class="loading" style="padding:24px;"><div class="loading-spinner"></div><div>正在加载完整轨迹…</div></div>';
 
@@ -4323,6 +4634,7 @@
                     slot.request_id = String(slot._full.request_id);
                 }
                 detailEl.innerHTML = renderRolloutDetail(slot._full);
+                updateRewardPanel(slot._full);
                 bindCollapseEvents();
                 finalizeRolloutDetailView();
                 scrollDetailToLastAssistant();
@@ -4332,6 +4644,7 @@
                     msg = '加载单条轨迹超时，请重试或检查 json 文件是否过大。';
                 }
                 setDetailJsonToolbarVisible(false);
+                clearRewardPanel('加载失败');
                 detailEl.innerHTML = `<div class="detail-empty"><div class="detail-empty-icon">⚠️</div><div>${escapeHtml(msg)}</div></div>`;
             }
         }
@@ -4586,6 +4899,9 @@
 
         function getRawOutputsFromRollout(rollout) {
             const info = getRewardInfoFromRollout(rollout);
+            if (info && info.raw_outputs && typeof info.raw_outputs === 'object') {
+                return info.raw_outputs;
+            }
             const rr = parseRewardResponseObject(info?.reward_response);
             const ro = rr && rr.raw_outputs;
             if (!ro || typeof ro !== 'object') {
@@ -4806,7 +5122,10 @@
 
             const info = getRewardInfoFromRollout(rollout);
             const rr = parseRewardResponseObject(info?.reward_response);
-            const scores = rr && rr.scores && typeof rr.scores === 'object' ? rr.scores : null;
+            const scores =
+                info && info.scores && typeof info.scores === 'object'
+                    ? info.scores
+                    : (rr && rr.scores && typeof rr.scores === 'object' ? rr.scores : null);
             const lines = [];
 
             lines.push('# Rollout 扣分报告');
@@ -5222,13 +5541,93 @@
             detailRolloutPayload = rollout;
             return `
                 ${renderMessages(rollout.messages)}
-                ${renderRewardInfo(rollout)}
                 ${renderMetadata(rollout)}
                 <div id="detailRawJsonPanel" class="detail-raw-json" style="display: none;">
                     <div class="detail-raw-json-head">原始 JSON（点击节点标题展开/折叠；复制仍使用完整 JSON 文本）</div>
                     <div id="detailRawJsonTree" class="detail-raw-json-tree"></div>
                 </div>
             `;
+        }
+
+        function formatDeductionItemsLines(text) {
+            if (text == null || text === '') {
+                return '';
+            }
+            return String(text)
+                .split('\n')
+                .map(function (line) { return line.trim(); })
+                .filter(function (line) { return line; })
+                .map(function (line) {
+                    return '<div class="deduction-item-line">' + escapeHtml(line) + '</div>';
+                })
+                .join('');
+        }
+
+        function renderDeductionItemsSection(deductionItems) {
+            if (!deductionItems || typeof deductionItems !== 'object') {
+                return '';
+            }
+            const blocks = [];
+            if (deductionItems.trajectory) {
+                blocks.push(
+                    '<div class="deduction-items-block">' +
+                    '<div class="deduction-items-label">Trajectory 扣分摘要</div>' +
+                    '<div class="deduction-items-scroll">' +
+                    formatDeductionItemsLines(deductionItems.trajectory) +
+                    '</div></div>'
+                );
+            }
+            if (deductionItems.answer) {
+                blocks.push(
+                    '<div class="deduction-items-block">' +
+                    '<div class="deduction-items-label">Answer 扣分摘要</div>' +
+                    '<div class="deduction-items-scroll">' +
+                    formatDeductionItemsLines(deductionItems.answer) +
+                    '</div></div>'
+                );
+            }
+            if (!blocks.length) {
+                return '';
+            }
+            return (
+                '<div class="deduction-items-section">' +
+                '<div class="deduction-items-section-title">🧾 奖励模型扣分摘要 (deduction_items)</div>' +
+                blocks.join('') +
+                '</div>'
+            );
+        }
+
+        function setDetailSplitHasReward(has) {
+            const split = document.getElementById('detailPanelSplit');
+            if (split) {
+                split.classList.toggle('has-reward', !!has);
+            }
+        }
+
+        function clearRewardPanel(message) {
+            const body = document.getElementById('rewardPanelBody');
+            if (!body) {
+                return;
+            }
+            setDetailSplitHasReward(false);
+            body.innerHTML =
+                '<div class="reward-panel-empty">' +
+                escapeHtml(message || '选择 Rollout 后显示 Reward 详情') +
+                '</div>';
+        }
+
+        function updateRewardPanel(rollout) {
+            const body = document.getElementById('rewardPanelBody');
+            if (!body) {
+                return;
+            }
+            if (!rollout) {
+                clearRewardPanel();
+                return;
+            }
+            setDetailSplitHasReward(true);
+            const html = renderRewardInfo(rollout);
+            body.innerHTML = html || '<div class="reward-panel-empty">该 Rollout 无 Reward 数据</div>';
         }
 
         function renderMessages(messages) {
@@ -5299,12 +5698,24 @@
                         const extraClass = isLastUser ? ' message-user-current' : '';
                         const showCodeInterpreterBadge =
                             msg.role === 'assistant' && messageHasCodeInterpreterCall(msg);
+                        const genTime = msg.generation_time;
+                        const genTimeLabel =
+                            typeof genTime === 'number' && Number.isFinite(genTime)
+                                ? ' (生成: ' + genTime.toFixed(2) + 's)'
+                                : '';
+                        const nativeTcHtml =
+                            msg.role === 'assistant' &&
+                            Array.isArray(msg.tool_calls) &&
+                            msg.tool_calls.length > 0 &&
+                            !assistantContentHasXmlToolCall(rawContent)
+                                ? renderNativeToolCalls(msg.tool_calls)
+                                : '';
 
                         return `
                             <div class="message ${roleClass}${extraClass} ${shouldCollapse ? 'collapsed' : ''}" ${isLastAssistant ? 'id="last-assistant-anchor"' : ''}>
                                 <div class="message-header">
                                     <div class="message-header-left">
-                                        <span>${msg.role} ${msg.generation_time ? `(生成: ${msg.generation_time.toFixed(2)}s)` : ''}</span>
+                                        <span>${msg.role}${genTimeLabel}</span>
                                         ${isLastUser ? '<span class="current-turn-badge">当前问句</span>' : ''}
                                         ${showCodeInterpreterBadge ? '<span class="code-interpreter-call-badge">调用 CodeInterpreter</span>' : ''}
                                         <span class="message-index">#${idx + 1}</span>
@@ -5313,6 +5724,7 @@
                                 </div>
                                 <div class="message-content">
                                     ${bodyHtml}
+                                    ${nativeTcHtml}
                                 </div>
                             </div>
                         `;
@@ -5730,10 +6142,8 @@
             const reward = getRewardContainer(rollout);
             const info = getRewardInfoFromRollout(rollout);
             if (!reward || !info) return '';
-            const ruleRewards = info.rule_reward_info || {};
-            const topScore = typeof rollout?.reward_score === 'number'
-                ? rollout.reward_score
-                : (typeof reward.score === 'number' ? reward.score : null);
+            const ruleRewards = info.rule_reward_info || reward.rule_reward_info || {};
+            const groundTruth = extractGroundTruthFromRollout(rollout);
             const zhLabel = {
                 dimension: '扣分维度',
                 rule: '触犯规则',
@@ -5762,6 +6172,43 @@
                         '</div>'
                     );
                 }).join('');
+            }
+
+            function renderCompactObjectRows(obj) {
+                if (!obj || typeof obj !== 'object') {
+                    return '';
+                }
+                return Object.entries(obj).map(function ([k, v]) {
+                    let text = '';
+                    if (Array.isArray(v)) {
+                        text = v.map(function (x) {
+                            return typeof x === 'object' && x !== null ? JSON.stringify(x) : String(x);
+                        }).join(' | ');
+                    } else if (v && typeof v === 'object') {
+                        text = JSON.stringify(v);
+                    } else {
+                        text = String(v);
+                    }
+                    return (
+                        '<div class="reward-detail" style="margin-left:15px;">- <strong>' +
+                        escapeHtml(k) +
+                        ':</strong> ' +
+                        escapeHtml(text) +
+                        '</div>'
+                    );
+                }).join('');
+            }
+
+            function renderAuxRewardSection(title, obj) {
+                if (!obj || typeof obj !== 'object' || Object.keys(obj).length === 0) {
+                    return '';
+                }
+                return (
+                    '<details style="margin-top:10px;" open>' +
+                    '<summary><strong>' + escapeHtml(title) + '</strong></summary>' +
+                    renderCompactObjectRows(obj) +
+                    '</details>'
+                );
             }
 
             function renderRawOutputs(ro) {
@@ -5864,26 +6311,39 @@
 
             return `
                 <div class="reward-info">
-                    <div class="reward-info-title">📊 Reward详情</div>
-                    <div class="reward-detail"><strong>最终分数:</strong> ${info.final_reward?.toFixed ? info.final_reward.toFixed(3) : (info.final_reward ?? 'N/A')}</div>
-                    <div class="reward-detail"><strong>Reward Score:</strong> ${topScore != null ? Number(topScore).toFixed(3) : 'N/A'}</div>
-                    <div class="reward-detail"><strong>LLM Reward:</strong> ${info.llm_reward?.toFixed ? info.llm_reward.toFixed(3) : (info.llm_reward ?? 'N/A')}</div>
+                    ${renderGroundTruthSection(groundTruth)}
                     ${(function() {
                         const rr = parseRewardResponseObject(info.reward_response);
-                        if (rr == null) return '<div class="reward-detail"><strong>Reward响应:</strong> N/A</div>';
-                        const sc = rr.scores || {};
+                        const sc =
+                            info.scores && typeof info.scores === 'object'
+                                ? info.scores
+                                : ((rr && rr.scores) || {});
                         const parts = [];
-                        parts.push('<div class="reward-detail"><strong>Reward响应:</strong></div>');
                         if (sc.trajectory != null || sc.answer != null) {
-                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Trajectory 评分: ' + (sc.trajectory != null ? sc.trajectory : 'N/A') + '</div>');
-                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Answer 评分: ' + (sc.answer != null ? sc.answer : 'N/A') + '</div>');
+                            parts.push('<div class="reward-detail"><strong>Trajectory 评分:</strong> ' + (sc.trajectory != null ? sc.trajectory : 'N/A') + '</div>');
+                            parts.push('<div class="reward-detail"><strong>Answer 评分:</strong> ' + (sc.answer != null ? sc.answer : 'N/A') + '</div>');
                         }
-                        if (rr.final_reward != null) {
-                            parts.push('<div class="reward-detail" style="margin-left:15px;">- Final Reward: ' + rr.final_reward + '</div>');
+                        const rrFinal = rr && rr.final_reward != null ? rr.final_reward : info.final_reward;
+                        if (rrFinal != null) {
+                            parts.push('<div class="reward-detail"><strong>Final Reward:</strong> ' + rrFinal + '</div>');
                         }
-                        parts.push(renderRawOutputs(rr.raw_outputs));
+                        const deductionItems =
+                            (rr && rr.deduction_items) ||
+                            info.deduction_items ||
+                            null;
+                        parts.push(renderDeductionItemsSection(deductionItems));
+                        const rawOutputs =
+                            info.raw_outputs && typeof info.raw_outputs === 'object'
+                                ? info.raw_outputs
+                                : (rr && rr.raw_outputs);
+                        parts.push('<details style="margin-top:10px;"><summary><strong>Reward 原始输出</strong></summary>');
+                        parts.push(renderRawOutputs(rawOutputs));
+                        parts.push('</details>');
                         return parts.join('');
                     })()}
+                    ${renderAuxRewardSection('并行调用信息', reward.parallel_call_info)}
+                    ${renderAuxRewardSection('FinQuery 输入惩罚', reward.finquery_input_penalty_info)}
+                    ${renderAuxRewardSection('Reward Clamp 信息', reward.reward_clamp_info)}
                     ${Object.keys(ruleRewards).length > 0 ? `
                         <div style="margin-top: 10px;">
                             <strong>规则奖励:</strong>
@@ -5909,11 +6369,18 @@
                         <div class="metadata-item"><strong>Request ID:</strong> ${escapeHtml(displayId)}</div>
                         <div class="metadata-item"><strong>时间戳:</strong> ${rollout.timestamp || 'N/A'}</div>
                         <div class="metadata-item"><strong>数据源:</strong> ${rollout.data_source || 'N/A'}</div>
+                        ${rollout.query_id ? `<div class="metadata-item"><strong>Query ID:</strong> ${escapeHtml(rollout.query_id)}</div>` : ''}
                         <div class="metadata-item"><strong>问题:</strong> ${escapeHtml(displayQuestion || 'N/A')}</div>
                         <div class="metadata-item"><strong>完成原因:</strong> ${rollout.finish_reason || 'N/A'}</div>
                         <div class="metadata-item"><strong>运行时间:</strong> ${runTimeSec != null ? runTimeSec.toFixed(2) : 'N/A'}s</div>
+                        ${rollout.token && rollout.token.token_info && rollout.token.token_info.total_tokens != null ? `
+                            <div class="metadata-item"><strong>Tokens:</strong> ${escapeHtml(String(rollout.token.token_info.total_tokens))}</div>
+                        ` : ''}
+                        ${rollout.tool_info && typeof rollout.tool_info === 'object' && rollout.tool_info.tool_usage_counts ? `
+                            <div class="metadata-item"><strong>工具调用统计:</strong> ${escapeHtml(JSON.stringify(rollout.tool_info.tool_usage_counts))}</div>
+                        ` : ''}
                         ${rollout.tool_usage_counts ? `
-                            <div class="metadata-item"><strong>工具使用:</strong> ${JSON.stringify(rollout.tool_usage_counts)}</div>
+                            <div class="metadata-item"><strong>工具使用:</strong> ${escapeHtml(JSON.stringify(rollout.tool_usage_counts))}</div>
                         ` : ''}
                     </div>
                 </div>

@@ -47,6 +47,10 @@ function getRewardInfoObject(rollout) {
 }
 function getRawOutputsFromRollout(rollout) {
     const info = getRewardInfoObject(rollout);
+    const direct = info?.raw_outputs;
+    if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
+        return direct;
+    }
     const rr = parseRewardResponseObject(info?.reward_response);
     const ro = rr?.raw_outputs;
     if (!ro || typeof ro !== 'object' || Array.isArray(ro)) {
@@ -165,9 +169,12 @@ function buildDeductionSummaryMarkdown(rollout) {
     }
     const infoTop = getRewardInfoObject(rollout) ?? undefined;
     const parsedRr = parseRewardResponseObject(infoTop?.reward_response);
-    const scores = parsedRr?.scores && typeof parsedRr.scores === 'object' && !Array.isArray(parsedRr.scores)
-        ? parsedRr.scores
-        : null;
+    const directScores = infoTop?.scores;
+    const scores = directScores && typeof directScores === 'object' && !Array.isArray(directScores)
+        ? directScores
+        : parsedRr?.scores && typeof parsedRr.scores === 'object' && !Array.isArray(parsedRr.scores)
+            ? parsedRr.scores
+            : null;
     const lines = [];
     lines.push('# Rollout 扣分报告');
     lines.push('');
@@ -385,11 +392,18 @@ function extractRolloutMeta(rollout) {
     const info = getRewardInfoObject(rollout) ?? undefined;
     const final_reward = info?.final_reward != null && typeof info.final_reward === 'number'
         ? info.final_reward : null;
+    if (score == null && final_reward != null) {
+        score = final_reward;
+    }
     const rr = parseRewardResponseObject(info?.reward_response);
     let trajectory_score = null;
     let answer_score = null;
-    if (rr?.scores && typeof rr.scores === 'object' && !Array.isArray(rr.scores)) {
-        const sc = rr.scores;
+    const directScores = info?.scores;
+    const scoreSource = directScores && typeof directScores === 'object' && !Array.isArray(directScores)
+        ? directScores
+        : rr?.scores;
+    if (scoreSource && typeof scoreSource === 'object' && !Array.isArray(scoreSource)) {
+        const sc = scoreSource;
         if (typeof sc.trajectory === 'number') {
             trajectory_score = sc.trajectory;
         }
