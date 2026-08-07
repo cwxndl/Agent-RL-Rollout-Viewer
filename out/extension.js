@@ -150,7 +150,14 @@ async function scanStepFoldersAsync(rolloutFolder) {
     }
     const steps = [];
     try {
+        const rootBase = path.basename(path.resolve(rolloutFolder));
         const files = await readdir(rolloutFolder);
+        if (rootBase.startsWith('step_')) {
+            const jsonCount = files.filter(f => f.endsWith('.json') && !f.startsWith('.')).length;
+            steps.push({ name: rootBase, path: rolloutFolder, fileCount: jsonCount });
+            stepCache = { folderPath: rolloutFolder, steps, timestamp: Date.now() };
+            return steps;
+        }
         // 并行检查所有目录
         const checkPromises = files
             .filter(f => f.startsWith('step_'))
